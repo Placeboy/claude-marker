@@ -1,0 +1,177 @@
+.editor {
+  max-width: var(--editor-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.editor :global(.tiptap) {
+  outline: none;
+  min-height: calc(100vh - var(--toolbar-height) - 96px);
+}
+
+.editor :global(.tiptap) > * + * {
+  margin-top: 0.5em;
+}
+
+/* Placeholder */
+.editor :global(.tiptap p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Headings */
+.editor :global(.tiptap h1) {
+  font-size: 2em;
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.4em;
+  line-height: 1.2;
+}
+
+.editor :global(.tiptap h2) {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin-top: 1.3em;
+  margin-bottom: 0.3em;
+  line-height: 1.3;
+}
+
+.editor :global(.tiptap h3) {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin-top: 1.1em;
+  margin-bottom: 0.2em;
+  line-height: 1.4;
+}
+
+/* Inline styles */
+.editor :global(.tiptap strong) {
+  font-weight: 600;
+}
+
+.editor :global(.tiptap code) {
+  background: var(--color-code-bg);
+  border-radius: var(--radius-sm);
+  padding: 0.15em 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: #e11d48;
+}
+
+.editor :global(.tiptap mark) {
+  background: var(--color-highlight);
+  border-radius: 2px;
+  padding: 0.1em 0;
+}
+
+/* Links */
+.editor :global(.tiptap a) {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* Blockquote */
+.editor :global(.tiptap blockquote) {
+  border-left: 3px solid var(--color-blockquote-border);
+  background: var(--color-blockquote-bg);
+  padding: 0.6em 1em;
+  margin: 0.8em 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Lists */
+.editor :global(.tiptap ul),
+.editor :global(.tiptap ol) {
+  padding-left: 1.5em;
+}
+
+.editor :global(.tiptap li) {
+  margin: 0.15em 0;
+}
+
+.editor :global(.tiptap li p) {
+  margin: 0;
+}
+
+/* Task list */
+.editor :global(.tiptap ul[data-type="taskList"]) {
+  list-style: none;
+  padding-left: 0;
+}
+
+.editor :global(.tiptap ul[data-type="taskList"] li) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.editor :global(.tiptap ul[data-type="taskList"] li label) {
+  margin-top: 0.25em;
+}
+
+.editor :global(.tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p) {
+  text-decoration: line-through;
+  color: var(--color-text-secondary);
+}
+
+/* Code block */
+.editor :global(.tiptap pre) {
+  background: var(--color-code-bg);
+  border-radius: var(--radius-md);
+  padding: 1em;
+  margin: 0.8em 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  line-height: 1.5;
+}
+
+.editor :global(.tiptap pre code) {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  border-radius: 0;
+}
+
+/* Horizontal rule */
+.editor :global(.tiptap hr) {
+  border: none;
+  border-top: 2px solid var(--color-border);
+  margin: 1.5em 0;
+}
+
+/* highlight.js theme overrides for light */
+.editor :global(.hljs-comment),
+.editor :global(.hljs-quote) {
+  color: #6a737d;
+}
+
+.editor :global(.hljs-keyword),
+.editor :global(.hljs-selector-tag) {
+  color: #d73a49;
+}
+
+.editor :global(.hljs-string),
+.editor :global(.hljs-attr) {
+  color: #032f62;
+}
+
+.editor :global(.hljs-number),
+.editor :global(.hljs-literal) {
+  color: #005cc5;
+}
+
+.editor :global(.hljs-function),
+.editor :global(.hljs-title) {
+  color: #6f42c1;
+}
+
+.editor :global(.hljs-built_in) {
+  color: #e36209;
+}
