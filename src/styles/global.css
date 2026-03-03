@@ -78,3 +78,34 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-tertiary);
 }
+
+@media print {
+  /* Hide sidebar toggle button (direct child button of root container) */
+  #root > div > button:first-child {
+    display: none !important;
+  }
+
+  /* Hide sidebar */
+  aside {
+    display: none !important;
+  }
+
+  /* Hide toolbar (marked with data-no-print) */
+  [data-no-print] {
+    display: none !important;
+  }
+
+  /* Editor full width for print */
+  :root {
+    --editor-max-width: 100%;
+  }
+
+  body {
+    overflow: visible;
+    height: auto;
+  }
+
+  #root {
+    height: auto;
+  }
+}

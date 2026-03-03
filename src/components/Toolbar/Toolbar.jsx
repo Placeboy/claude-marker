@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import styles from './Toolbar.module.css'
 
 function ToolbarButton({ onClick, active, title, children }) {
@@ -46,6 +46,8 @@ function editorToMarkdown(editor) {
 
 export default function Toolbar({ editor, lastSaved }) {
   const [, forceUpdate] = useState(0)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const exportRef = useRef(null)
 
   useEffect(() => {
     if (!editor) return
@@ -58,9 +60,21 @@ export default function Toolbar({ editor, lastSaved }) {
     }
   }, [editor])
 
+  useEffect(() => {
+    if (!exportMenuOpen) return
+    const handleMouseDown = (e) => {
+      if (exportRef.current && !exportRef.current.contains(e.target)) {
+        setExportMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [exportMenuOpen])
+
   if (!editor) return null
 
-  const handleExport = () => {
+  const handleExportMarkdown = () => {
+    setExportMenuOpen(false)
     import('turndown').then(({ default: TurndownService }) => {
       window.__TurndownService = TurndownService
       const md = editorToMarkdown(editor)
@@ -72,6 +86,11 @@ export default function Toolbar({ editor, lastSaved }) {
       a.click()
       URL.revokeObjectURL(url)
     })
+  }
+
+  const handleExportPdf = () => {
+    setExportMenuOpen(false)
+    window.print()
   }
 
   const handleImport = () => {
@@ -99,7 +118,7 @@ export default function Toolbar({ editor, lastSaved }) {
   }
 
   return (
-    <div className={styles.toolbar}>
+    <div className={styles.toolbar} data-no-print>
       <div className={styles.left}>
         <div className={styles.group}>
           <ToolbarButton
@@ -237,14 +256,30 @@ export default function Toolbar({ editor, lastSaved }) {
           </svg>
           Import
         </button>
-        <button className={styles.fileBtn} onClick={handleExport} title="Export as .md file">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          Export
-        </button>
+        <div className={styles.exportWrapper} ref={exportRef}>
+          <button
+            className={styles.fileBtn}
+            onClick={() => setExportMenuOpen((v) => !v)}
+            title="Export document"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Export
+          </button>
+          {exportMenuOpen && (
+            <div className={styles.exportMenu}>
+              <button className={styles.exportMenuItem} onClick={handleExportMarkdown}>
+                Markdown (.md)
+              </button>
+              <button className={styles.exportMenuItem} onClick={handleExportPdf}>
+                PDF (.pdf)
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

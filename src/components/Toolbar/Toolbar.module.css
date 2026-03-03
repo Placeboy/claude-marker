@@ -88,3 +88,41 @@
   color: var(--color-text);
   border-color: var(--color-text-tertiary);
 }
+
+.exportWrapper {
+  position: relative;
+}
+
+.exportMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 100;
+  min-width: 160px;
+  padding: 4px;
+}
+
+.exportMenuItem {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--color-text);
+  text-align: left;
+  white-space: nowrap;
+  transition: background-color 0.1s;
+}
+
+.exportMenuItem:hover {
+  background: var(--color-bg-hover);
+}
