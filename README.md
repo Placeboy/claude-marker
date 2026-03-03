@@ -1,3 +1,5 @@
+[中文](./README_zh.md) | English
+
 # Markdown Editor
 
 A lightweight, Notion-style Markdown editor built with React and TipTap.
