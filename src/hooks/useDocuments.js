@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { dehydrateImageRefs, resolveImageRefs, revokeAllUrls, getAllImageIds, deleteImage } from '../utils/imageStore.js'
 
 const DOCS_KEY = 'markdown-editor-docs'
 const CURRENT_KEY = 'markdown-editor-current'
@@ -134,6 +135,31 @@ function collectDescendants(docs, id) {
   return ids
 }
 
+// Collect all img://{id} references from all stored docs
+function collectImageRefs(docs) {
+  const refs = new Set()
+  for (const doc of docs) {
+    if (doc.type !== 'doc') continue
+    const content = loadDocContent(doc.id)
+    if (!content) continue
+    const json = JSON.stringify(content)
+    const matches = json.matchAll(/"img:\/\/([^"]+)"/g)
+    for (const m of matches) refs.add(m[1])
+  }
+  return refs
+}
+
+// Remove images from IndexedDB that are not referenced by any document
+async function cleanupOrphanImages(docs) {
+  try {
+    const usedIds = collectImageRefs(docs)
+    const allIds = await getAllImageIds()
+    for (const id of allIds) {
+      if (!usedIds.has(id)) await deleteImage(id)
+    }
+  } catch { /* ignore cleanup errors */ }
+}
+
 export default function useDocuments(editor) {
   const [state, setState] = useState(initState)
   const [lastSaved, setLastSaved] = useState(null)
@@ -153,7 +179,7 @@ export default function useDocuments(editor) {
     const ed = editorRef.current
     const { currentDocId, docs } = stateRef.current
     if (!ed || !currentDocId) return
-    const json = ed.getJSON()
+    const json = dehydrateImageRefs(ed.getJSON())
     saveDocContent(currentDocId, json)
     // Update updatedAt
     const updatedDocs = docs.map((d) =>
@@ -165,10 +191,11 @@ export default function useDocuments(editor) {
   }, [])
 
   // Load content into editor for a given doc id
-  const loadIntoEditor = useCallback((id) => {
+  const loadIntoEditor = useCallback(async (id) => {
     const ed = editorRef.current
     if (!ed) return
-    const content = loadDocContent(id)
+    const raw = loadDocContent(id)
+    const content = raw ? await resolveImageRefs(raw) : null
     ed.commands.setContent(content || { type: 'doc', content: [{ type: 'paragraph' }] })
   }, [])
 
@@ -213,6 +240,7 @@ export default function useDocuments(editor) {
   const switchDoc = useCallback((id) => {
     if (id === stateRef.current.currentDocId) return
     flush()
+    revokeAllUrls()
     setState((s) => ({ ...s, currentDocId: id }))
     localStorage.setItem(CURRENT_KEY, id)
     loadIntoEditor(id)
@@ -286,6 +314,9 @@ export default function useDocuments(editor) {
     }
 
     setState({ docs: newDocs, currentDocId: newCurrentId })
+
+    // Async: clean up orphan images in IndexedDB
+    cleanupOrphanImages(newDocs)
   }, [flush, loadIntoEditor])
 
   const moveItem = useCallback((id, newParentId) => {

@@ -77,6 +77,28 @@ export const slashItems = [
       editor.chain().focus().deleteRange(range).setHorizontalRule().run()
     },
   },
+  {
+    title: 'Image',
+    description: 'Insert image from URL',
+    icon: '🖼',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run()
+      const url = window.prompt('Enter image URL:', 'https://')
+      if (!url || url === 'https://') return
+      editor.chain().focus().setImage({ src: url }).run()
+    },
+  },
+  {
+    title: 'Bookmark',
+    description: 'Embed a link as a card',
+    icon: '🔖',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run()
+      const url = window.prompt('Enter URL:', 'https://')
+      if (!url || url === 'https://') return
+      editor.chain().focus().setBookmark(url).run()
+    },
+  },
 ]
 
 const SlashCommandPluginKey = new PluginKey('slashCommand')

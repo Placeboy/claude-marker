@@ -73,6 +73,16 @@
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.1s, opacity 0.1s;
+}
+
+.editor :global(.tiptap a:hover) {
+  background: var(--color-accent-light);
+}
+
+.editor :global(.tiptap a:active) {
+  opacity: 0.7;
 }
 
 /* Blockquote */
@@ -137,6 +147,144 @@
   color: inherit;
   font-size: inherit;
   border-radius: 0;
+}
+
+/* Images — resizable wrapper */
+.editor :global(.tiptap .image-resizable) {
+  display: table;
+  position: relative;
+  max-width: 100%;
+  margin: 0.8em 0;
+  line-height: 0;
+}
+
+.editor :global(.tiptap .image-resizable img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  display: block;
+}
+
+/* Edge resize handles — invisible hit zones with visible bar on hover */
+.editor :global(.tiptap .image-resizable .image-edge-handle) {
+  position: absolute;
+  top: 0;
+  width: 12px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 2;
+}
+
+/* Visible bar indicator (pseudo-element) */
+.editor :global(.tiptap .image-resizable .image-edge-handle::after) {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 36px;
+  max-height: 50%;
+  border-radius: 2px;
+  background: var(--color-accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.editor :global(.tiptap .image-resizable .image-edge-handle-left) {
+  left: -6px;
+}
+
+.editor :global(.tiptap .image-resizable .image-edge-handle-left::after) {
+  left: 4px;
+}
+
+.editor :global(.tiptap .image-resizable .image-edge-handle-right) {
+  right: -6px;
+}
+
+.editor :global(.tiptap .image-resizable .image-edge-handle-right::after) {
+  right: 4px;
+}
+
+/* Show bar on hover */
+.editor :global(.tiptap .image-resizable .image-edge-handle:hover::after) {
+  opacity: 0.7;
+}
+
+/* Selected node — outline + fully visible bars */
+.editor :global(.tiptap .image-resizable.ProseMirror-selectednode) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.editor :global(.tiptap .image-resizable.ProseMirror-selectednode .image-edge-handle::after) {
+  opacity: 1;
+}
+
+/* Bookmark card */
+.editor :global(.tiptap .bookmark-card) {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  padding: 12px 14px;
+  margin: 0.8em 0;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  user-select: none;
+}
+
+.editor :global(.tiptap .bookmark-card:hover) {
+  border-color: var(--color-text-tertiary);
+}
+
+.editor :global(.tiptap .bookmark-card.ProseMirror-selectednode) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.editor :global(.tiptap .bookmark-content) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.editor :global(.tiptap .bookmark-title) {
+  font-weight: 600;
+  font-size: 0.9em;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor :global(.tiptap .bookmark-description) {
+  font-size: 0.8em;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor :global(.tiptap .bookmark-description:empty) {
+  display: none;
+}
+
+.editor :global(.tiptap .bookmark-url) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 0.75em;
+  color: var(--color-text-tertiary);
+}
+
+.editor :global(.tiptap .bookmark-icon) {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 /* Horizontal rule */

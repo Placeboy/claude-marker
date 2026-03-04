@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
@@ -10,11 +10,30 @@ import TaskItem from '@tiptap/extension-task-item'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
 import SlashCommand from '../../extensions/SlashCommand.jsx'
+import ImageExtension from '../../extensions/ImageExtension.jsx'
+import BookmarkExtension from '../../extensions/BookmarkExtension.jsx'
+import { saveImage, getImageUrl } from '../../utils/imageStore.js'
+import LinkPopup from '../LinkPopup/LinkPopup.jsx'
 import styles from './Editor.module.css'
 
 const lowlight = createLowlight(common)
 
+async function insertImage(file, editor, pos) {
+  const id = await saveImage(file)
+  const url = await getImageUrl(id)
+  if (pos != null) {
+    editor.chain().focus().insertContentAt(pos, {
+      type: 'image',
+      attrs: { src: url, 'data-image-id': id },
+    }).run()
+  } else {
+    editor.chain().focus().setImage({ src: url, 'data-image-id': id }).run()
+  }
+}
+
 export default function Editor({ onReady }) {
+  const editorRef = useRef(null)
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -45,14 +64,49 @@ export default function Editor({ onReady }) {
         lowlight,
       }),
       SlashCommand,
+      ImageExtension.configure({
+        inline: false,
+        allowBase64: false,
+      }),
+      BookmarkExtension,
     ],
     content: { type: 'doc', content: [{ type: 'paragraph' }] },
     editorProps: {
       attributes: {
         spellcheck: 'false',
       },
+      handleDOMEvents: {
+        mousedown: (view, event) => {
+          const anchor = event.target.closest?.('a')
+          if (!anchor) return false
+          event.preventDefault()
+          const href = anchor.getAttribute('href')
+          if (href) window.open(href, '_blank', 'noopener,noreferrer')
+          return true
+        },
+      },
+      handlePaste: (view, event) => {
+        const items = Array.from(event.clipboardData?.items || [])
+        const imageItem = items.find((item) => item.type.startsWith('image/'))
+        if (!imageItem) return false
+        event.preventDefault()
+        const file = imageItem.getAsFile()
+        if (file && editorRef.current) insertImage(file, editorRef.current)
+        return true
+      },
+      handleDrop: (view, event) => {
+        const files = Array.from(event.dataTransfer?.files || [])
+        const imageFile = files.find((f) => f.type.startsWith('image/'))
+        if (!imageFile) return false
+        event.preventDefault()
+        const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })
+        if (editorRef.current) insertImage(imageFile, editorRef.current, pos?.pos)
+        return true
+      },
     },
   })
+
+  editorRef.current = editor
 
   useEffect(() => {
     if (editor) {
@@ -85,6 +139,7 @@ export default function Editor({ onReady }) {
   return (
     <div className={styles.editor}>
       <EditorContent editor={editor} />
+      <LinkPopup editor={editor} />
     </div>
   )
 }

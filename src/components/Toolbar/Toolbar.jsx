@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { saveImage, getImageUrl } from '../../utils/imageStore.js'
 import styles from './Toolbar.module.css'
 
 function ToolbarButton({ onClick, active, title, children }) {
@@ -38,6 +39,23 @@ function editorToMarkdown(editor) {
       filter: 'mark',
       replacement: (content) => `==${content}==`,
     })
+    td.addRule('bookmark', {
+      filter: (node) => node.nodeName === 'DIV' && node.getAttribute('data-type') === 'bookmark',
+      replacement: (content, node) => {
+        const title = node.getAttribute('data-title') || node.getAttribute('data-url') || 'link'
+        const url = node.getAttribute('data-url') || ''
+        return `[${title}](${url})\n\n`
+      },
+    })
+    td.addRule('image', {
+      filter: 'img',
+      replacement: (content, node) => {
+        const alt = node.getAttribute('alt') || ''
+        const imageId = node.getAttribute('data-image-id')
+        const src = imageId ? `img://${imageId}` : (node.getAttribute('src') || '')
+        return `![${alt}](${src})`
+      },
+    })
     return td.turndown(html)
   }
   // Fallback: simple HTML output
@@ -47,7 +65,9 @@ function editorToMarkdown(editor) {
 export default function Toolbar({ editor, lastSaved, docName }) {
   const [, forceUpdate] = useState(0)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [imageMenuOpen, setImageMenuOpen] = useState(false)
   const exportRef = useRef(null)
+  const imageRef = useRef(null)
 
   useEffect(() => {
     if (!editor) return
@@ -61,15 +81,18 @@ export default function Toolbar({ editor, lastSaved, docName }) {
   }, [editor])
 
   useEffect(() => {
-    if (!exportMenuOpen) return
+    if (!exportMenuOpen && !imageMenuOpen) return
     const handleMouseDown = (e) => {
-      if (exportRef.current && !exportRef.current.contains(e.target)) {
+      if (exportMenuOpen && exportRef.current && !exportRef.current.contains(e.target)) {
         setExportMenuOpen(false)
+      }
+      if (imageMenuOpen && imageRef.current && !imageRef.current.contains(e.target)) {
+        setImageMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handleMouseDown)
     return () => document.removeEventListener('mousedown', handleMouseDown)
-  }, [exportMenuOpen])
+  }, [exportMenuOpen, imageMenuOpen])
 
   if (!editor) return null
 
@@ -110,6 +133,28 @@ export default function Toolbar({ editor, lastSaved, docName }) {
       reader.readAsText(file)
     }
     input.click()
+  }
+
+  const handleUploadImage = () => {
+    setImageMenuOpen(false)
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = async (e) => {
+      const file = e.target.files[0]
+      if (!file) return
+      const id = await saveImage(file)
+      const url = await getImageUrl(id)
+      editor.chain().focus().setImage({ src: url, 'data-image-id': id }).run()
+    }
+    input.click()
+  }
+
+  const handleImageUrl = () => {
+    setImageMenuOpen(false)
+    const url = window.prompt('Enter image URL:', 'https://')
+    if (!url || url === 'https://') return
+    editor.chain().focus().setImage({ src: url }).run()
   }
 
   const formatTime = (date) => {
@@ -242,6 +287,31 @@ export default function Toolbar({ editor, lastSaved, docName }) {
             </svg>
           </ToolbarButton>
         </div>
+
+        <Separator />
+
+        <div className={styles.exportWrapper} ref={imageRef}>
+          <ToolbarButton
+            onClick={() => setImageMenuOpen((v) => !v)}
+            title="Insert Image"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+          </ToolbarButton>
+          {imageMenuOpen && (
+            <div className={styles.exportMenu}>
+              <button className={styles.exportMenuItem} onClick={handleUploadImage}>
+                Upload Image
+              </button>
+              <button className={styles.exportMenuItem} onClick={handleImageUrl}>
+                Image URL
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={styles.right}>
@@ -303,6 +373,7 @@ function markdownToHtml(md) {
     .replace(/~~(.+?)~~/g, '<s>$1</s>')
     .replace(/`(.+?)`/g, '<code>$1</code>')
     .replace(/==(.+?)==/g, '<mark>$1</mark>')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
 
   // Step 3: Block-level elements
@@ -320,7 +391,7 @@ function markdownToHtml(md) {
 
   // Step 4: Wrap remaining plain lines as paragraphs
   processed = processed.replace(
-    /^(?!<[hupob]|<li|<hr|<code|<pre|\x00CODEBLOCK)(.+)$/gm,
+    /^(?!<[hupob]|<li|<hr|<code|<pre|<img|\x00CODEBLOCK)(.+)$/gm,
     '<p>$1</p>'
   )
 
