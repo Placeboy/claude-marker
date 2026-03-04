@@ -1,0 +1,48 @@
+.popup {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text);
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.btn:hover {
+  background: var(--color-bg-hover);
+}
+
+.btnAccent {
+  composes: btn;
+  background: var(--color-primary, #2563eb);
+  border-color: var(--color-primary, #2563eb);
+  color: #fff;
+}
+
+.btnAccent:hover {
+  opacity: 0.9;
+  background: var(--color-primary, #2563eb);
+}

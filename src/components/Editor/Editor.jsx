@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
@@ -14,6 +14,7 @@ import ImageExtension from '../../extensions/ImageExtension.jsx'
 import BookmarkExtension from '../../extensions/BookmarkExtension.jsx'
 import { saveImage, getImageUrl } from '../../utils/imageStore.js'
 import LinkPopup from '../LinkPopup/LinkPopup.jsx'
+import PasteBookmarkPopup from '../PasteBookmarkPopup/PasteBookmarkPopup.jsx'
 import styles from './Editor.module.css'
 
 const lowlight = createLowlight(common)
@@ -31,8 +32,11 @@ async function insertImage(file, editor, pos) {
   }
 }
 
+const URL_REGEX = /^https?:\/\/\S+$/
+
 export default function Editor({ onReady }) {
   const editorRef = useRef(null)
+  const [pastePopup, setPastePopup] = useState(null)
 
   const editor = useEditor({
     extensions: [
@@ -86,6 +90,18 @@ export default function Editor({ onReady }) {
         },
       },
       handlePaste: (view, event) => {
+        // Detect bare URL paste
+        const text = event.clipboardData?.getData('text/plain')?.trim()
+        if (text && URL_REGEX.test(text)) {
+          event.preventDefault()
+          const coords = view.coordsAtPos(view.state.selection.from)
+          setPastePopup({
+            url: text,
+            position: { top: coords.bottom + 4, left: coords.left },
+          })
+          return true
+        }
+
         const items = Array.from(event.clipboardData?.items || [])
         const imageItem = items.find((item) => item.type.startsWith('image/'))
         if (!imageItem) return false
@@ -136,10 +152,45 @@ export default function Editor({ onReady }) {
     }
   }, [editor, onReady])
 
+  const handlePasteAsText = useCallback(() => {
+    if (!pastePopup || !editor) return
+    editor.chain().focus().insertContent({
+      type: 'text',
+      text: pastePopup.url,
+      marks: [{ type: 'link', attrs: { href: pastePopup.url } }],
+    }).run()
+    setPastePopup(null)
+  }, [pastePopup, editor])
+
+  const handlePasteAsBookmark = useCallback(() => {
+    if (!pastePopup || !editor) return
+    editor.chain().focus().setBookmark(pastePopup.url).run()
+    setPastePopup(null)
+  }, [pastePopup, editor])
+
+  const handleDismissPastePopup = useCallback(() => {
+    if (!pastePopup || !editor) return
+    editor.chain().focus().insertContent({
+      type: 'text',
+      text: pastePopup.url,
+      marks: [{ type: 'link', attrs: { href: pastePopup.url } }],
+    }).run()
+    setPastePopup(null)
+  }, [pastePopup, editor])
+
   return (
     <div className={styles.editor}>
       <EditorContent editor={editor} />
       <LinkPopup editor={editor} />
+      {pastePopup && (
+        <PasteBookmarkPopup
+          url={pastePopup.url}
+          position={pastePopup.position}
+          onPasteAsText={handlePasteAsText}
+          onPasteAsBookmark={handlePasteAsBookmark}
+          onDismiss={handleDismissPastePopup}
+        />
+      )}
     </div>
   )
 }
