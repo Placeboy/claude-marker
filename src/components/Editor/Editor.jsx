@@ -14,43 +14,6 @@ import styles from './Editor.module.css'
 
 const lowlight = createLowlight(common)
 
-const STORAGE_KEY = 'markdown-editor-content'
-
-function getInitialContent() {
-  const saved = localStorage.getItem(STORAGE_KEY)
-  if (saved) {
-    try {
-      return JSON.parse(saved)
-    } catch {
-      return null
-    }
-  }
-  return {
-    type: 'doc',
-    content: [
-      {
-        type: 'heading',
-        attrs: { level: 1 },
-        content: [{ type: 'text', text: 'Welcome to Markdown Editor' }],
-      },
-      {
-        type: 'paragraph',
-        content: [
-          { type: 'text', text: 'Start typing, or press ' },
-          { type: 'text', marks: [{ type: 'code' }], text: '/' },
-          { type: 'text', text: ' for commands. Use Markdown shortcuts like ' },
-          { type: 'text', marks: [{ type: 'code' }], text: '# ' },
-          { type: 'text', text: ' for headings, ' },
-          { type: 'text', marks: [{ type: 'code' }], text: '- ' },
-          { type: 'text', text: ' for lists, and ' },
-          { type: 'text', marks: [{ type: 'code' }], text: '> ' },
-          { type: 'text', text: ' for quotes.' },
-        ],
-      },
-    ],
-  }
-}
-
 export default function Editor({ onReady }) {
   const editor = useEditor({
     extensions: [
@@ -83,7 +46,7 @@ export default function Editor({ onReady }) {
       }),
       SlashCommand,
     ],
-    content: getInitialContent(),
+    content: { type: 'doc', content: [{ type: 'paragraph' }] },
     editorProps: {
       attributes: {
         spellcheck: 'false',

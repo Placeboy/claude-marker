@@ -44,7 +44,7 @@ function editorToMarkdown(editor) {
   return html
 }
 
-export default function Toolbar({ editor, lastSaved }) {
+export default function Toolbar({ editor, lastSaved, docName }) {
   const [, forceUpdate] = useState(0)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const exportRef = useRef(null)
@@ -82,7 +82,7 @@ export default function Toolbar({ editor, lastSaved }) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'document.md'
+      a.download = (docName || 'document') + '.md'
       a.click()
       URL.revokeObjectURL(url)
     })

@@ -6,7 +6,7 @@
 
 .editor :global(.tiptap) {
   outline: none;
-  min-height: calc(100vh - var(--toolbar-height) - 96px);
+  min-height: calc(100vh - var(--tabbar-height) - var(--toolbar-height) - 96px);
 }
 
 .editor :global(.tiptap) > * + * {
