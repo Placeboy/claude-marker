@@ -47,6 +47,159 @@ function collectDescendantIds(items, id) {
   return ids
 }
 
+// Defined OUTSIDE FileTree so its identity is stable across re-renders.
+// This prevents React from unmounting/remounting tree nodes on every state change,
+// which would cancel in-progress drag operations.
+function TreeNode({ node, depth, ctx }) {
+  const {
+    docs, expanded, currentDocId, renamingId, renameValue,
+    dragOverId, draggingId, inputRef, expandTimerRef,
+    toggleExpand, onSwitchDoc, setRenamingId, setRenameValue,
+    handleContextMenu, handleRenameKeyDown, commitRename,
+    setDraggingId, setDragOverId, clearExpandTimer,
+    canDrop, ensureExpanded, handleDrop,
+  } = ctx
+
+  const isFolder = node.type === 'folder'
+  const hasKids = node.children.length > 0 || hasChildren(docs, node.id)
+  const isExpanded = expanded.has(node.id)
+  const isActive = node.type === 'doc' && node.id === currentDocId
+  const isRenaming = renamingId === node.id
+  const showChevron = isFolder || hasKids
+  const isDragOver = dragOverId === node.id && draggingId !== node.id
+  const isDragging = draggingId === node.id
+
+  const handleClick = () => {
+    if (isRenaming) return
+    if (isFolder) {
+      toggleExpand(node.id)
+    } else {
+      onSwitchDoc(node.id)
+    }
+  }
+
+  const handleDoubleClick = (e) => {
+    e.stopPropagation()
+    setRenamingId(node.id)
+    setRenameValue(node.name)
+  }
+
+  const handleRightClick = (e) => {
+    handleContextMenu(e, node.id, node.type)
+  }
+
+  // --- Drag source ---
+  const handleDragStart = (e) => {
+    if (isRenaming) {
+      e.preventDefault()
+      return
+    }
+    setDraggingId(node.id)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', node.id)
+  }
+
+  const handleDragEnd = () => {
+    setDraggingId(null)
+    setDragOverId(null)
+    clearExpandTimer()
+  }
+
+  // --- Drop target ---
+  const handleDragOver = (e) => {
+    e.stopPropagation()
+    if (!draggingId || !canDrop(draggingId, node.id)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverId !== node.id) {
+      setDragOverId(node.id)
+      clearExpandTimer()
+      // Auto-expand folders/parents after hovering 600ms
+      if ((isFolder || hasKids) && !isExpanded) {
+        expandTimerRef.current = setTimeout(() => {
+          ensureExpanded(node.id)
+        }, 600)
+      }
+    }
+  }
+
+  const handleDragLeave = (e) => {
+    e.stopPropagation()
+    // Only clear expand timer if truly leaving this element (not entering a child)
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      clearExpandTimer()
+    }
+  }
+
+  const handleDropOnNode = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    handleDrop(node.id)
+  }
+
+  return (
+    <>
+      <div
+        className={
+          `${styles.treeItem}` +
+          `${isActive ? ` ${styles.active}` : ''}` +
+          `${isDragOver ? ` ${styles.dropTarget}` : ''}` +
+          `${isDragging ? ` ${styles.dragging}` : ''}`
+        }
+        style={{ paddingLeft: 12 + depth * 16 }}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        onContextMenu={handleRightClick}
+        draggable={!isRenaming}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDropOnNode}
+      >
+        {showChevron ? (
+          <span
+            className={`${styles.chevron} ${isExpanded ? styles.expanded : ''}`}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleExpand(node.id)
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M4.5 2L8.5 6L4.5 10V2Z" />
+            </svg>
+          </span>
+        ) : (
+          <span className={styles.chevronPlaceholder} />
+        )}
+
+        <span className={styles.icon}>
+          {isFolder ? '\uD83D\uDCC1' : '\uD83D\uDCC4'}
+        </span>
+
+        {isRenaming ? (
+          <input
+            ref={inputRef}
+            className={styles.renameInput}
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={handleRenameKeyDown}
+            onBlur={commitRename}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span className={styles.itemName}>{node.name}</span>
+        )}
+      </div>
+
+      {isExpanded &&
+        node.children.map((child) => (
+          <TreeNode key={child.id} node={child} depth={depth + 1} ctx={ctx} />
+        ))}
+    </>
+  )
+}
+
 export default function FileTree({
   docs,
   currentDocId,
@@ -170,146 +323,14 @@ export default function FileTree({
 
   const tree = buildTree(docs, null)
 
-  function TreeNode({ node, depth }) {
-    const isFolder = node.type === 'folder'
-    const hasKids = node.children.length > 0 || hasChildren(docs, node.id)
-    const isExpanded = expanded.has(node.id)
-    const isActive = node.type === 'doc' && node.id === currentDocId
-    const isRenaming = renamingId === node.id
-    const showChevron = isFolder || hasKids
-    const isDragOver = dragOverId === node.id && draggingId !== node.id
-    const isDragging = draggingId === node.id
-
-    const handleClick = () => {
-      if (isRenaming) return
-      if (isFolder) {
-        toggleExpand(node.id)
-      } else {
-        onSwitchDoc(node.id)
-      }
-    }
-
-    const handleDoubleClick = (e) => {
-      e.stopPropagation()
-      setRenamingId(node.id)
-      setRenameValue(node.name)
-    }
-
-    const handleRightClick = (e) => {
-      handleContextMenu(e, node.id, node.type)
-    }
-
-    // --- Drag source ---
-    const handleDragStart = (e) => {
-      if (isRenaming) {
-        e.preventDefault()
-        return
-      }
-      setDraggingId(node.id)
-      e.dataTransfer.effectAllowed = 'move'
-      e.dataTransfer.setData('text/plain', node.id)
-    }
-
-    const handleDragEnd = () => {
-      setDraggingId(null)
-      setDragOverId(null)
-      clearExpandTimer()
-    }
-
-    // --- Drop target ---
-    const handleDragOver = (e) => {
-      if (!draggingId || !canDrop(draggingId, node.id)) return
-      e.preventDefault()
-      e.dataTransfer.dropEffect = 'move'
-      if (dragOverId !== node.id) {
-        setDragOverId(node.id)
-        clearExpandTimer()
-        // Auto-expand folders/parents after hovering 600ms
-        if ((isFolder || hasKids) && !isExpanded) {
-          expandTimerRef.current = setTimeout(() => {
-            ensureExpanded(node.id)
-          }, 600)
-        }
-      }
-    }
-
-    const handleDragLeave = (e) => {
-      // Only clear if truly leaving this element (not entering a child)
-      if (!e.currentTarget.contains(e.relatedTarget)) {
-        if (dragOverId === node.id) {
-          setDragOverId(null)
-          clearExpandTimer()
-        }
-      }
-    }
-
-    const handleDropOnNode = (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      handleDrop(node.id)
-    }
-
-    return (
-      <>
-        <div
-          className={
-            `${styles.treeItem}` +
-            `${isActive ? ` ${styles.active}` : ''}` +
-            `${isDragOver ? ` ${styles.dropTarget}` : ''}` +
-            `${isDragging ? ` ${styles.dragging}` : ''}`
-          }
-          style={{ paddingLeft: 12 + depth * 16 }}
-          onClick={handleClick}
-          onDoubleClick={handleDoubleClick}
-          onContextMenu={handleRightClick}
-          draggable={!isRenaming}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDropOnNode}
-        >
-          {showChevron ? (
-            <span
-              className={`${styles.chevron} ${isExpanded ? styles.expanded : ''}`}
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleExpand(node.id)
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                <path d="M4.5 2L8.5 6L4.5 10V2Z" />
-              </svg>
-            </span>
-          ) : (
-            <span className={styles.chevronPlaceholder} />
-          )}
-
-          <span className={styles.icon}>
-            {isFolder ? '\uD83D\uDCC1' : '\uD83D\uDCC4'}
-          </span>
-
-          {isRenaming ? (
-            <input
-              ref={inputRef}
-              className={styles.renameInput}
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              onKeyDown={handleRenameKeyDown}
-              onBlur={commitRename}
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <span className={styles.itemName}>{node.name}</span>
-          )}
-        </div>
-
-        {isExpanded &&
-          node.children.map((child) => (
-            <TreeNode key={child.id} node={child} depth={depth + 1} />
-          ))}
-      </>
-    )
+  // Bundle all state and callbacks for TreeNode
+  const ctx = {
+    docs, expanded, currentDocId, renamingId, renameValue,
+    dragOverId, draggingId, inputRef, expandTimerRef,
+    toggleExpand, onSwitchDoc, setRenamingId, setRenameValue,
+    handleContextMenu, handleRenameKeyDown, commitRename,
+    setDraggingId, setDragOverId, clearExpandTimer,
+    canDrop, ensureExpanded, handleDrop,
   }
 
   // Drop on blank area → move to root
@@ -327,9 +348,8 @@ export default function FileTree({
 
   const handleTreeContentDragLeave = (e) => {
     if (!e.currentTarget.contains(e.relatedTarget)) {
-      if (dragOverId === '__root__') {
-        setDragOverId(null)
-      }
+      setDragOverId(null)
+      clearExpandTimer()
     }
   }
 
@@ -354,7 +374,7 @@ export default function FileTree({
         onDrop={handleTreeContentDrop}
       >
         {tree.map((node) => (
-          <TreeNode key={node.id} node={node} depth={0} />
+          <TreeNode key={node.id} node={node} depth={0} ctx={ctx} />
         ))}
       </div>
 

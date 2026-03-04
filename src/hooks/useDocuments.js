@@ -34,6 +34,24 @@ function saveDocContent(id, json) {
   localStorage.setItem(DOC_PREFIX + id, JSON.stringify(json))
 }
 
+// Check if a name already exists among siblings (same parentId), optionally excluding an item by id
+function hasDuplicateName(docs, name, parentId, excludeId = null) {
+  return docs.some(
+    (d) =>
+      d.parentId === parentId &&
+      d.id !== excludeId &&
+      d.name.localeCompare(name, undefined, { sensitivity: 'base' }) === 0
+  )
+}
+
+// Generate a unique name by appending " (2)", " (3)", etc. if needed
+function uniqueName(docs, baseName, parentId) {
+  if (!hasDuplicateName(docs, baseName, parentId)) return baseName
+  let i = 2
+  while (hasDuplicateName(docs, `${baseName} (${i})`, parentId)) i++
+  return `${baseName} (${i})`
+}
+
 function createBlankItem(name = 'Untitled', type = 'doc', parentId = null) {
   return {
     id: generateId(),
@@ -202,7 +220,9 @@ export default function useDocuments(editor) {
 
   const createDoc = useCallback((parentId = null) => {
     flush()
-    const doc = createBlankItem('Untitled', 'doc', parentId)
+    const { docs } = stateRef.current
+    const name = uniqueName(docs, 'Untitled', parentId)
+    const doc = createBlankItem(name, 'doc', parentId)
     setState((s) => {
       const newDocs = [...s.docs, doc]
       saveDocs(newDocs)
@@ -218,7 +238,9 @@ export default function useDocuments(editor) {
   }, [flush])
 
   const createFolder = useCallback((parentId = null) => {
-    const folder = createBlankItem('New Folder', 'folder', parentId)
+    const { docs } = stateRef.current
+    const name = uniqueName(docs, 'New Folder', parentId)
+    const folder = createBlankItem(name, 'folder', parentId)
     setState((s) => {
       const newDocs = [...s.docs, folder]
       saveDocs(newDocs)
@@ -275,6 +297,14 @@ export default function useDocuments(editor) {
     if (newParentId === id) return
     const descendants = new Set(collectDescendants(docs, id))
     if (newParentId && descendants.has(newParentId)) return
+    // Prevent duplicate names in the target folder
+    if (hasDuplicateName(docs, item.name, newParentId, id)) {
+      const targetName = newParentId
+        ? docs.find((d) => d.id === newParentId)?.name || 'target folder'
+        : 'root'
+      alert(`"${item.name}" already exists in ${targetName}. Please rename it first.`)
+      return
+    }
 
     setState((s) => {
       const newDocs = s.docs.map((d) =>
@@ -288,6 +318,13 @@ export default function useDocuments(editor) {
   const renameDoc = useCallback((id, name) => {
     const trimmed = name.trim()
     if (!trimmed) return // reject empty name
+    const { docs } = stateRef.current
+    const item = docs.find((d) => d.id === id)
+    if (!item) return
+    if (hasDuplicateName(docs, trimmed, item.parentId, id)) {
+      alert(`"${trimmed}" already exists in this location. Please use a different name.`)
+      return
+    }
     setState((s) => {
       const newDocs = s.docs.map((d) =>
         d.id === id ? { ...d, name: trimmed, updatedAt: Date.now() } : d
