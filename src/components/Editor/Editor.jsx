@@ -15,6 +15,7 @@ import BookmarkExtension from '../../extensions/BookmarkExtension.jsx'
 import { saveImage, getImageUrl } from '../../utils/imageStore.js'
 import LinkPopup from '../LinkPopup/LinkPopup.jsx'
 import PasteBookmarkPopup from '../PasteBookmarkPopup/PasteBookmarkPopup.jsx'
+import ImageLightbox from '../ImageLightbox/ImageLightbox.jsx'
 import styles from './Editor.module.css'
 
 const lowlight = createLowlight(common)
@@ -37,6 +38,7 @@ const URL_REGEX = /^https?:\/\/\S+$/
 export default function Editor({ onReady }) {
   const editorRef = useRef(null)
   const [pastePopup, setPastePopup] = useState(null)
+  const [lightboxSrc, setLightboxSrc] = useState(null)
 
   const editor = useEditor({
     extensions: [
@@ -152,6 +154,12 @@ export default function Editor({ onReady }) {
     }
   }, [editor, onReady])
 
+  useEffect(() => {
+    const handleLightbox = (e) => setLightboxSrc(e.detail.src)
+    window.addEventListener('image-lightbox', handleLightbox)
+    return () => window.removeEventListener('image-lightbox', handleLightbox)
+  }, [])
+
   const handlePasteAsText = useCallback(() => {
     if (!pastePopup || !editor) return
     editor.chain().focus().insertContent({
@@ -190,6 +198,9 @@ export default function Editor({ onReady }) {
           onPasteAsBookmark={handlePasteAsBookmark}
           onDismiss={handleDismissPastePopup}
         />
+      )}
+      {lightboxSrc && (
+        <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       )}
     </div>
   )

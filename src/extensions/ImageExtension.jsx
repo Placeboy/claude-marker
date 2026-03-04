@@ -41,6 +41,9 @@ const ImageExtension = Image.extend({
       }
       if (node.attrs.width) img.style.width = node.attrs.width
       img.draggable = false
+      img.addEventListener('dblclick', () => {
+        window.dispatchEvent(new CustomEvent('image-lightbox', { detail: { src: img.src } }))
+      })
       wrapper.appendChild(img)
 
       // Left / right edge handles
@@ -119,6 +122,7 @@ const ImageExtension = Image.extend({
         // so ProseMirror can handle node dragging once the node is selected.
         stopEvent(event) {
           if (event.type === 'mousedown') return true
+          if (event.type === 'dblclick') return true
           if (resizing) return true
           return false
         },
