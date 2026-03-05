@@ -20,6 +20,7 @@ export default function App() {
     createDoc,
     createFolder,
     deleteItem,
+    closeTab,
     moveItem,
     renameDoc,
   } = useDocuments(editor)
@@ -51,7 +52,7 @@ export default function App() {
           currentDocId={currentDocId}
           onSwitch={switchDoc}
           onCreate={createDoc}
-          onDelete={deleteItem}
+          onClose={closeTab}
           onRename={renameDoc}
         />
         <Toolbar editor={editor} lastSaved={lastSaved} docName={currentDocName} />

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import styles from './TabBar.module.css'
 
-export default function TabBar({ docs, currentDocId, onSwitch, onCreate, onDelete, onRename }) {
+export default function TabBar({ docs, currentDocId, onSwitch, onCreate, onClose, onRename }) {
   const [renamingId, setRenamingId] = useState(null)
   const [renameValue, setRenameValue] = useState('')
   const inputRef = useRef(null)
@@ -71,7 +71,7 @@ export default function TabBar({ docs, currentDocId, onSwitch, onCreate, onDelet
               className={styles.closeBtn}
               onClick={(e) => {
                 e.stopPropagation()
-                onDelete(doc.id)
+                onClose(doc.id)
               }}
               title="Close document"
             >

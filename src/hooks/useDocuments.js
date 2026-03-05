@@ -365,6 +365,18 @@ export default function useDocuments(editor) {
     })
   }, [])
 
+  const closeTab = useCallback((id) => {
+    const { docs, currentDocId } = stateRef.current
+    const openDocs = docs.filter((d) => d.type === 'doc')
+    if (openDocs.length <= 1) return
+
+    if (id === currentDocId) {
+      const idx = openDocs.findIndex((d) => d.id === id)
+      const next = openDocs[idx + 1] || openDocs[idx - 1]
+      if (next) switchDoc(next.id)
+    }
+  }, [switchDoc])
+
   const currentDoc = state.docs.find((d) => d.id === state.currentDocId) || state.docs[0]
 
   return {
@@ -376,6 +388,7 @@ export default function useDocuments(editor) {
     createDoc,
     createFolder,
     deleteItem,
+    closeTab,
     moveItem,
     renameDoc,
   }
