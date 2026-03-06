@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { openExternal } from '../../utils/tauriAdapter'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
@@ -197,7 +198,7 @@ export default function Editor({ onReady }) {
           if (href && href.startsWith('#') && href.length > 1) {
             window.dispatchEvent(new CustomEvent('navigate-doc', { detail: { docId: href.slice(1) } }))
           } else if (href) {
-            window.open(href, '_blank', 'noopener,noreferrer')
+            openExternal(href)
           }
           return true
         },

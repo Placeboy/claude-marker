@@ -2,11 +2,12 @@
 
 # Markdown Editor
 
-A lightweight, Notion-style Markdown editor built with React and TipTap.
+A lightweight, Notion-style Markdown editor built with React and TipTap. Runs as a web app or a native desktop app via Tauri v2.
 
 ![React](https://img.shields.io/badge/React-18-blue)
 ![TipTap](https://img.shields.io/badge/TipTap-v2-purple)
 ![Vite](https://img.shields.io/badge/Vite-5-yellow)
+![Tauri](https://img.shields.io/badge/Tauri-v2-orange)
 
 ## Features
 
@@ -26,11 +27,17 @@ A lightweight, Notion-style Markdown editor built with React and TipTap.
 # Install dependencies
 npm install
 
-# Start dev server
+# Start dev server (web)
 npm run dev
 
-# Build for production
+# Build for production (web)
 npm run build
+
+# Start desktop app (requires Rust toolchain)
+npm run tauri:dev
+
+# Build native desktop app
+npm run tauri:build
 ```
 
 ## Keyboard Shortcuts
@@ -76,8 +83,16 @@ src/
 ├── hooks/
 │   ├── useAutoSave.js         # Auto-save to localStorage
 │   └── useToc.js              # Extract headings for TOC
+├── utils/
+│   └── tauriAdapter.js        # Tauri/Web cross-environment adapter
 └── styles/
     └── global.css             # CSS variables, reset, theme
+src-tauri/                     # Tauri v2 desktop shell (Rust)
+├── tauri.conf.json            # Window, CSP, bundle config
+├── capabilities/default.json  # Permission declarations
+└── src/
+    ├── main.rs                # Rust entry point
+    └── lib.rs                 # Tauri plugins + PDF export command
 ```
 
 ## Tech Stack
@@ -87,6 +102,7 @@ src/
 - **highlight.js** via lowlight — Code syntax highlighting
 - **CSS Modules** — Scoped component styling
 - **Turndown** — HTML to Markdown conversion for export
+- **Tauri v2** — Native desktop shell (uses system WebView, ~10 MB)
 - **localStorage** — Client-side persistence
 
 ## License

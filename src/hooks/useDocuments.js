@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { dehydrateImageRefs, resolveImageRefs, revokeAllUrls, getAllImageIds, deleteImage } from '../utils/imageStore.js'
+import { onAppClose } from '../utils/tauriAdapter'
 
 const DOCS_KEY = 'markdown-editor-docs'
 const CURRENT_KEY = 'markdown-editor-current'
@@ -264,11 +265,9 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     }
   }, [editor, flush])
 
-  // beforeunload — save on browser close
+  // Save on app/browser close
   useEffect(() => {
-    const handleBeforeUnload = () => flush()
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    return onAppClose(() => flush())
   }, [flush])
 
   const createDoc = useCallback((parentId = null) => {

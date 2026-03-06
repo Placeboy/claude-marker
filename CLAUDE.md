@@ -4,14 +4,16 @@ Project context for Claude Code.
 
 ## What is this?
 
-A lightweight Notion-style Markdown editor. React 18 + Vite + TipTap v2.
+A lightweight Notion-style Markdown editor. React 18 + Vite + TipTap v2. Runs as a web app or a native desktop app via Tauri v2.
 
 ## Commands
 
 ```bash
-npm run dev      # Start dev server (Vite, port 5173)
-npm run build    # Production build to dist/
-npm run preview  # Preview production build
+npm run dev          # Start dev server (Vite, port 5173)
+npm run build        # Production build to dist/
+npm run preview      # Preview production build
+npm run tauri:dev    # Start Tauri desktop dev mode (requires Rust)
+npm run tauri:build  # Build native desktop app (requires Rust)
 ```
 
 ## Architecture
@@ -23,6 +25,8 @@ npm run preview  # Preview production build
 - **Markdown import**: `markdownToHtml()` in `src/components/Toolbar/Toolbar.jsx` is a regex-based converter. It first extracts code blocks, then processes inline formatting, then block-level elements. Not a full parser — handles common cases.
 - **Markdown export**: Uses `turndown` library (dynamic import) to convert TipTap HTML → Markdown.
 - **Styling**: CSS Modules per component + `src/styles/global.css` for CSS variables and reset. No CSS framework.
+- **Tauri adapter**: `src/utils/tauriAdapter.js` provides cross-environment helpers (`openExternal`, `saveTextFile`, `exportPdf`, `onAppClose`). Uses runtime `isTauri()` detection with dynamic imports so web builds are unaffected.
+- **Desktop shell**: `src-tauri/` contains the Tauri v2 Rust backend. Plugins: `shell` (open external URLs), `dialog` (native save/open), `fs` (file write). `lib.rs` has a `generate_pdf` command for PDF export via temp HTML.
 
 ## Key conventions
 

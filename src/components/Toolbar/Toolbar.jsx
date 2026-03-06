@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { saveImage, getImageUrl } from '../../utils/imageStore.js'
+import { saveTextFile, exportPdf } from '../../utils/tauriAdapter'
 import styles from './Toolbar.module.css'
 
 function ToolbarButton({ onClick, active, title, children }) {
@@ -101,19 +102,23 @@ export default function Toolbar({ editor, lastSaved, docName }) {
     import('turndown').then(({ default: TurndownService }) => {
       window.__TurndownService = TurndownService
       const md = editorToMarkdown(editor)
-      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = (docName || 'document') + '.md'
-      a.click()
-      URL.revokeObjectURL(url)
+      const fileName = (docName || 'document') + '.md'
+      saveTextFile(md, fileName, 'text/markdown')
     })
   }
 
   const handleExportPdf = () => {
     setExportMenuOpen(false)
-    window.print()
+    const html = editor.getHTML()
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map((el) => el.outerHTML)
+      .join('\n')
+    const fullHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${docName || 'document'}</title>
+${styles}
+<style>body{max-width:800px;margin:40px auto;padding:0 20px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;}</style>
+</head><body>${html}</body></html>`
+    exportPdf(fullHtml)
   }
 
   const handleImport = () => {

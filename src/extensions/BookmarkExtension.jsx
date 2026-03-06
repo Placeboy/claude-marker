@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from '@tiptap/core'
+import { openExternal } from '../utils/tauriAdapter'
 
 const BookmarkExtension = Node.create({
   name: 'bookmark',
@@ -144,7 +145,7 @@ const BookmarkExtension = Node.create({
       // Click opens the link; selection via keyboard
       wrapper.addEventListener('click', (e) => {
         e.preventDefault()
-        window.open(node.attrs.url, '_blank', 'noopener,noreferrer')
+        openExternal(node.attrs.url)
       })
 
       return {
