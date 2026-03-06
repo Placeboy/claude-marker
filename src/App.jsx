@@ -1,16 +1,18 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Sidebar from './components/Sidebar/Sidebar'
 import TabBar from './components/TabBar/TabBar'
 import Toolbar from './components/Toolbar/Toolbar'
 import Editor from './components/Editor/Editor'
 import useToc from './hooks/useToc'
 import useDocuments from './hooks/useDocuments'
+import useHashRouter from './hooks/useHashRouter'
 import styles from './App.module.css'
 
 export default function App() {
   const [editor, setEditor] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const { headings, activeId } = useToc(editor)
+  const { hashDocId, setHash, replaceHash } = useHashRouter()
   const {
     docs,
     currentDocId,
@@ -23,11 +25,23 @@ export default function App() {
     closeTab,
     moveItem,
     renameDoc,
-  } = useDocuments(editor)
+  } = useDocuments(editor, { hashDocId, setHash, replaceHash })
 
   const handleEditorReady = useCallback((editorInstance) => {
     setEditor(editorInstance)
   }, [])
+
+  // Listen for internal #docId link navigation
+  useEffect(() => {
+    const handleNavigateDoc = (e) => {
+      const { docId } = e.detail
+      if (docs.find((d) => d.id === docId && d.type === 'doc')) {
+        switchDoc(docId)
+      }
+    }
+    window.addEventListener('navigate-doc', handleNavigateDoc)
+    return () => window.removeEventListener('navigate-doc', handleNavigateDoc)
+  }, [docs, switchDoc])
 
   return (
     <div className={styles.container}>

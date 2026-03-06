@@ -96,10 +96,17 @@ function migrate() {
   return null
 }
 
-function initState() {
+function initState(hashDocId) {
   // Try migration first
   const migrated = migrate()
-  if (migrated) return migrated
+  if (migrated) {
+    // If hash points to a valid doc in migrated data, use it
+    if (hashDocId && migrated.docs.find((d) => d.id === hashDocId && d.type === 'doc')) {
+      migrated.currentDocId = hashDocId
+      localStorage.setItem(CURRENT_KEY, hashDocId)
+    }
+    return migrated
+  }
 
   // Load existing docs
   let docs = loadDocs()
@@ -110,9 +117,15 @@ function initState() {
       saveDocs(migrateDocs)
       docs = migrateDocs
     }
-    let currentDocId = localStorage.getItem(CURRENT_KEY)
-    if (!currentDocId || !docs.find((d) => d.id === currentDocId)) {
-      currentDocId = docs.find((d) => d.type === 'doc')?.id || docs[0].id
+    // If hash points to a valid doc, prefer it over localStorage
+    let currentDocId
+    if (hashDocId && docs.find((d) => d.id === hashDocId && d.type === 'doc')) {
+      currentDocId = hashDocId
+    } else {
+      currentDocId = localStorage.getItem(CURRENT_KEY)
+      if (!currentDocId || !docs.find((d) => d.id === currentDocId)) {
+        currentDocId = docs.find((d) => d.type === 'doc')?.id || docs[0].id
+      }
     }
     return { docs, currentDocId }
   }
@@ -160,8 +173,8 @@ async function cleanupOrphanImages(docs) {
   } catch { /* ignore cleanup errors */ }
 }
 
-export default function useDocuments(editor) {
-  const [state, setState] = useState(initState)
+export default function useDocuments(editor, { hashDocId, setHash, replaceHash } = {}) {
+  const [state, setState] = useState(() => initState(hashDocId))
   const [lastSaved, setLastSaved] = useState(null)
   const timerRef = useRef(null)
   const editorRef = useRef(editor)
@@ -199,12 +212,33 @@ export default function useDocuments(editor) {
     ed.commands.setContent(content || { type: 'doc', content: [{ type: 'paragraph' }] })
   }, [])
 
+  const switchDoc = useCallback((id, { pushHistory = true } = {}) => {
+    if (id === stateRef.current.currentDocId) return
+    flush()
+    revokeAllUrls()
+    setState((s) => ({ ...s, currentDocId: id }))
+    localStorage.setItem(CURRENT_KEY, id)
+    loadIntoEditor(id)
+    if (pushHistory && setHash) setHash(id)
+  }, [flush, loadIntoEditor, setHash])
+
   // Initialize editor content on first editor ready
   useEffect(() => {
     if (!editor) return
     loadIntoEditor(state.currentDocId)
+    if (replaceHash) replaceHash(state.currentDocId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
+
+  // Sync with hash changes from browser back/forward
+  useEffect(() => {
+    if (!hashDocId) return
+    const { docs, currentDocId } = stateRef.current
+    if (hashDocId === currentDocId) return
+    if (docs.find((d) => d.id === hashDocId && d.type === 'doc')) {
+      switchDoc(hashDocId, { pushHistory: false })
+    }
+  }, [hashDocId, switchDoc])
 
   // Auto-save on editor update (debounced)
   useEffect(() => {
@@ -237,15 +271,6 @@ export default function useDocuments(editor) {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [flush])
 
-  const switchDoc = useCallback((id) => {
-    if (id === stateRef.current.currentDocId) return
-    flush()
-    revokeAllUrls()
-    setState((s) => ({ ...s, currentDocId: id }))
-    localStorage.setItem(CURRENT_KEY, id)
-    loadIntoEditor(id)
-  }, [flush, loadIntoEditor])
-
   const createDoc = useCallback((parentId = null) => {
     flush()
     const { docs } = stateRef.current
@@ -262,8 +287,9 @@ export default function useDocuments(editor) {
     if (ed) {
       ed.commands.setContent({ type: 'doc', content: [{ type: 'paragraph' }] })
     }
+    if (setHash) setHash(doc.id)
     return doc.id
-  }, [flush])
+  }, [flush, setHash])
 
   const createFolder = useCallback((parentId = null) => {
     const { docs } = stateRef.current
@@ -311,13 +337,14 @@ export default function useDocuments(editor) {
       newCurrentId = remainingDocs[0].id
       localStorage.setItem(CURRENT_KEY, newCurrentId)
       loadIntoEditor(newCurrentId)
+      if (setHash) setHash(newCurrentId)
     }
 
     setState({ docs: newDocs, currentDocId: newCurrentId })
 
     // Async: clean up orphan images in IndexedDB
     cleanupOrphanImages(newDocs)
-  }, [flush, loadIntoEditor])
+  }, [flush, loadIntoEditor, setHash])
 
   const moveItem = useCallback((id, newParentId) => {
     const { docs } = stateRef.current

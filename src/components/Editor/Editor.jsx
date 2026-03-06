@@ -194,7 +194,11 @@ export default function Editor({ onReady }) {
           if (!anchor) return false
           event.preventDefault()
           const href = anchor.getAttribute('href')
-          if (href) window.open(href, '_blank', 'noopener,noreferrer')
+          if (href && href.startsWith('#') && href.length > 1) {
+            window.dispatchEvent(new CustomEvent('navigate-doc', { detail: { docId: href.slice(1) } }))
+          } else if (href) {
+            window.open(href, '_blank', 'noopener,noreferrer')
+          }
           return true
         },
       },

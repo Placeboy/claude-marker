@@ -63,7 +63,11 @@ export default function LinkPopup({ editor }) {
   const { href, rect } = linkInfo
 
   const handleOpen = () => {
-    window.open(href, '_blank', 'noopener,noreferrer')
+    if (href.startsWith('#') && href.length > 1) {
+      window.dispatchEvent(new CustomEvent('navigate-doc', { detail: { docId: href.slice(1) } }))
+    } else {
+      window.open(href, '_blank', 'noopener,noreferrer')
+    }
   }
 
   const handleEdit = () => {
