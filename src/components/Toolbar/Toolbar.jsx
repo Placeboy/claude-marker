@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { saveImage, getImageUrl } from '../../utils/imageStore.js'
-import { saveTextFile, exportPdf } from '../../utils/tauriAdapter'
 import styles from './Toolbar.module.css'
 
 function ToolbarButton({ onClick, active, title, children }) {
@@ -20,54 +19,11 @@ function Separator() {
   return <div className={styles.separator} />
 }
 
-function editorToMarkdown(editor) {
-  // Convert TipTap JSON to markdown via HTML + turndown
-  const html = editor.getHTML()
-  const TurndownService = window.__TurndownService
-  if (TurndownService) {
-    const td = new TurndownService({
-      headingStyle: 'atx',
-      codeBlockStyle: 'fenced',
-    })
-    td.addRule('taskList', {
-      filter: (node) => node.nodeName === 'LI' && node.parentNode?.getAttribute('data-type') === 'taskList',
-      replacement: (content, node) => {
-        const checked = node.getAttribute('data-checked') === 'true'
-        return `${checked ? '- [x]' : '- [ ]'} ${content.trim()}\n`
-      },
-    })
-    td.addRule('highlight', {
-      filter: 'mark',
-      replacement: (content) => `==${content}==`,
-    })
-    td.addRule('bookmark', {
-      filter: (node) => node.nodeName === 'DIV' && node.getAttribute('data-type') === 'bookmark',
-      replacement: (content, node) => {
-        const title = node.getAttribute('data-title') || node.getAttribute('data-url') || 'link'
-        const url = node.getAttribute('data-url') || ''
-        return `[${title}](${url})\n\n`
-      },
-    })
-    td.addRule('image', {
-      filter: 'img',
-      replacement: (content, node) => {
-        const alt = node.getAttribute('alt') || ''
-        const imageId = node.getAttribute('data-image-id')
-        const src = imageId ? `img://${imageId}` : (node.getAttribute('src') || '')
-        return `![${alt}](${src})`
-      },
-    })
-    return td.turndown(html)
-  }
-  // Fallback: simple HTML output
-  return html
-}
-
-export default function Toolbar({ editor, lastSaved, docName }) {
+export default function Toolbar({
+  editor,
+}) {
   const [, forceUpdate] = useState(0)
-  const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [imageMenuOpen, setImageMenuOpen] = useState(false)
-  const exportRef = useRef(null)
   const imageRef = useRef(null)
 
   useEffect(() => {
@@ -82,63 +38,17 @@ export default function Toolbar({ editor, lastSaved, docName }) {
   }, [editor])
 
   useEffect(() => {
-    if (!exportMenuOpen && !imageMenuOpen) return
+    if (!imageMenuOpen) return
     const handleMouseDown = (e) => {
-      if (exportMenuOpen && exportRef.current && !exportRef.current.contains(e.target)) {
-        setExportMenuOpen(false)
-      }
       if (imageMenuOpen && imageRef.current && !imageRef.current.contains(e.target)) {
         setImageMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handleMouseDown)
     return () => document.removeEventListener('mousedown', handleMouseDown)
-  }, [exportMenuOpen, imageMenuOpen])
+  }, [imageMenuOpen])
 
   if (!editor) return null
-
-  const handleExportMarkdown = () => {
-    setExportMenuOpen(false)
-    import('turndown').then(({ default: TurndownService }) => {
-      window.__TurndownService = TurndownService
-      const md = editorToMarkdown(editor)
-      const fileName = (docName || 'document') + '.md'
-      saveTextFile(md, fileName, 'text/markdown')
-    })
-  }
-
-  const handleExportPdf = () => {
-    setExportMenuOpen(false)
-    const html = editor.getHTML()
-    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-      .map((el) => el.outerHTML)
-      .join('\n')
-    const fullHtml = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${docName || 'document'}</title>
-${styles}
-<style>body{max-width:800px;margin:40px auto;padding:0 20px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;}</style>
-</head><body>${html}</body></html>`
-    exportPdf(fullHtml)
-  }
-
-  const handleImport = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.md,.markdown,.txt'
-    input.onchange = (e) => {
-      const file = e.target.files[0]
-      if (!file) return
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        const text = ev.target.result
-        // Convert markdown to HTML-ish content (basic conversion)
-        const html = markdownToHtml(text)
-        editor.commands.setContent(html)
-      }
-      reader.readAsText(file)
-    }
-    input.click()
-  }
 
   const handleUploadImage = () => {
     setImageMenuOpen(false)
@@ -161,12 +71,6 @@ ${styles}
     if (!url || url === 'https://') return
     editor.chain().focus().setImage({ src: url }).run()
   }
-
-  const formatTime = (date) => {
-    if (!date) return ''
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-
   return (
     <div className={styles.toolbar} data-no-print>
       <div className={styles.left}>
@@ -318,108 +222,6 @@ ${styles}
           )}
         </div>
       </div>
-
-      <div className={styles.right}>
-        {lastSaved && (
-          <span className={styles.saved}>Saved {formatTime(lastSaved)}</span>
-        )}
-        <button className={styles.fileBtn} onClick={handleImport} title="Import .md file">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          Import
-        </button>
-        <div className={styles.exportWrapper} ref={exportRef}>
-          <button
-            className={styles.fileBtn}
-            onClick={() => setExportMenuOpen((v) => !v)}
-            title="Export document"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            Export
-          </button>
-          {exportMenuOpen && (
-            <div className={styles.exportMenu}>
-              <button className={styles.exportMenuItem} onClick={handleExportMarkdown}>
-                Markdown (.md)
-              </button>
-              <button className={styles.exportMenuItem} onClick={handleExportPdf}>
-                PDF (.pdf)
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   )
-}
-
-// Simple markdown to HTML converter for import
-function markdownToHtml(md) {
-  // Step 1: Extract fenced code blocks to protect them from inline processing
-  const codeBlocks = []
-  let processed = md.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-    const placeholder = `\x00CODEBLOCK${codeBlocks.length}\x00`
-    const langAttr = lang ? ` class="language-${lang}"` : ''
-    codeBlocks.push(`<pre><code${langAttr}>${escapeHtml(code.trim())}</code></pre>`)
-    return placeholder
-  })
-
-  // Step 2: Apply inline formatting first (before block-level consumes the lines)
-  processed = processed
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/~~(.+?)~~/g, '<s>$1</s>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/==(.+?)==/g, '<mark>$1</mark>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
-
-  // Step 3: Block-level elements
-  processed = processed
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/^---$/gm, '<hr>')
-    .replace(/^\*\*\*$/gm, '<hr>')
-    .replace(/^> (.+)$/gm, '<blockquote><p>$1</p></blockquote>')
-    .replace(/^- \[x\] (.+)$/gm, '<ul data-type="taskList"><li data-checked="true"><p>$1</p></li></ul>')
-    .replace(/^- \[ \] (.+)$/gm, '<ul data-type="taskList"><li data-checked="false"><p>$1</p></li></ul>')
-    .replace(/^[-*] (.+)$/gm, '<ul><li><p>$1</p></li></ul>')
-    .replace(/^\d+\. (.+)$/gm, '<ol><li><p>$1</p></li></ol>')
-
-  // Step 4: Wrap remaining plain lines as paragraphs
-  processed = processed.replace(
-    /^(?!<[hupob]|<li|<hr|<code|<pre|<img|\x00CODEBLOCK)(.+)$/gm,
-    '<p>$1</p>'
-  )
-
-  // Step 5: Merge consecutive same-type lists
-  processed = processed
-    .replace(/<\/ul>\n<ul data-type="taskList">/g, '\n')
-    .replace(/<\/ul>\n<ul>/g, '\n')
-    .replace(/<\/ol>\n<ol>/g, '\n')
-
-  // Step 6: Restore code blocks
-  codeBlocks.forEach((block, i) => {
-    processed = processed.replace(`\x00CODEBLOCK${i}\x00`, block)
-  })
-
-  // Clean up empty lines
-  processed = processed.replace(/\n{2,}/g, '\n')
-
-  return processed
-}
-
-function escapeHtml(text) {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
 }

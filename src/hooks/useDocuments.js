@@ -1,34 +1,58 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { dehydrateImageRefs, resolveImageRefs, revokeAllUrls, getAllImageIds, deleteImage } from '../utils/imageStore.js'
-import { onAppClose } from '../utils/tauriAdapter'
+import { editorToMarkdown, markdownToHtml } from '../utils/markdown.js'
+import {
+  isTauri,
+  onAppClose,
+  openDirectoryDialog,
+  openTextFileDialog,
+  readTextFile,
+  saveTextFile,
+  scanDirectory,
+  writeTextFile,
+} from '../utils/tauriAdapter'
 
 const DOCS_KEY = 'markdown-editor-docs'
 const CURRENT_KEY = 'markdown-editor-current'
 const DOC_PREFIX = 'markdown-editor-doc-'
 const OLD_KEY = 'markdown-editor-content'
 const SAVE_DELAY = 1000
+const MAX_VISIBLE_TABS = 8
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
 }
 
-function loadDocs() {
+function loadLocalDocs() {
   try {
     const raw = localStorage.getItem(DOCS_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch { /* ignore */ }
-  return null
+    if (!raw) return null
+    const docs = JSON.parse(raw)
+    return docs.map((doc) => ({
+      ...doc,
+      source: 'local',
+    }))
+  } catch {
+    return null
+  }
 }
 
-function saveDocs(docs) {
-  localStorage.setItem(DOCS_KEY, JSON.stringify(docs))
+function saveLocalDocs(docs) {
+  localStorage.setItem(
+    DOCS_KEY,
+    JSON.stringify(
+      docs.map(({ source, path, ...doc }) => doc)
+    )
+  )
 }
 
 function loadDocContent(id) {
   try {
     const raw = localStorage.getItem(DOC_PREFIX + id)
     if (raw) return JSON.parse(raw)
-  } catch { /* ignore */ }
+  } catch {
+    // ignore
+  }
   return null
 }
 
@@ -36,7 +60,10 @@ function saveDocContent(id, json) {
   localStorage.setItem(DOC_PREFIX + id, JSON.stringify(json))
 }
 
-// Check if a name already exists among siblings (same parentId), optionally excluding an item by id
+function fileNameFromPath(path) {
+  return path?.split(/[/\\]/).pop() || 'Untitled'
+}
+
 function hasDuplicateName(docs, name, parentId, excludeId = null) {
   return docs.some(
     (d) =>
@@ -46,7 +73,6 @@ function hasDuplicateName(docs, name, parentId, excludeId = null) {
   )
 }
 
-// Generate a unique name by appending " (2)", " (3)", etc. if needed
 function uniqueName(docs, baseName, parentId) {
   if (!hasDuplicateName(docs, baseName, parentId)) return baseName
   let i = 2
@@ -60,85 +86,126 @@ function createBlankItem(name = 'Untitled', type = 'doc', parentId = null) {
     name,
     type,
     parentId,
+    source: 'local',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   }
 }
 
-// Migrate flat docs to tree model (add type + parentId if missing)
+function createFileDoc(path, id = generateId()) {
+  return {
+    id,
+    name: fileNameFromPath(path),
+    type: 'doc',
+    parentId: null,
+    source: 'file',
+    path,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }
+}
+
 function migrateToTree(docs) {
   if (!docs || docs.length === 0) return docs
-  if (docs[0].type) return docs // already migrated
-  return docs.map((d) => ({ ...d, type: 'doc', parentId: null }))
+  if (docs[0].type && docs[0].source) return docs
+  return docs.map((d) => ({
+    ...d,
+    type: d.type || 'doc',
+    parentId: d.parentId ?? null,
+    source: 'local',
+  }))
 }
 
 function migrate() {
-  // Already migrated
   if (localStorage.getItem(DOCS_KEY)) return null
 
   const oldContent = localStorage.getItem(OLD_KEY)
-  if (oldContent) {
-    let content = null
-    try {
-      content = JSON.parse(oldContent)
-    } catch { /* ignore */ }
+  if (!oldContent) return null
 
-    const doc = createBlankItem('Untitled', 'doc', null)
-    const docs = [doc]
-    saveDocs(docs)
-    if (content) {
-      saveDocContent(doc.id, content)
-    }
-    localStorage.setItem(CURRENT_KEY, doc.id)
-    localStorage.removeItem(OLD_KEY)
-    return { docs, currentDocId: doc.id }
+  let content = null
+  try {
+    content = JSON.parse(oldContent)
+  } catch {
+    // ignore
   }
 
-  return null
+  const doc = createBlankItem('Untitled', 'doc', null)
+  const docs = [doc]
+  saveLocalDocs(docs)
+  if (content) {
+    saveDocContent(doc.id, content)
+  }
+  localStorage.setItem(CURRENT_KEY, doc.id)
+  localStorage.removeItem(OLD_KEY)
+  return { localDocs: docs, currentDocId: doc.id }
 }
 
 function initState(hashDocId) {
-  // Try migration first
   const migrated = migrate()
   if (migrated) {
-    // If hash points to a valid doc in migrated data, use it
-    if (hashDocId && migrated.docs.find((d) => d.id === hashDocId && d.type === 'doc')) {
+    if (hashDocId && migrated.localDocs.find((d) => d.id === hashDocId && d.type === 'doc')) {
       migrated.currentDocId = hashDocId
       localStorage.setItem(CURRENT_KEY, hashDocId)
     }
-    return migrated
+    return {
+      ...migrated,
+      fileDocs: [],
+      workspaceItems: [],
+      workspaceRoot: null,
+      recentDocIds: [migrated.currentDocId],
+    }
   }
 
-  // Load existing docs
-  let docs = loadDocs()
-  if (docs && docs.length > 0) {
-    // Migrate to tree model if needed
-    const migrateDocs = migrateToTree(docs)
-    if (migrateDocs !== docs) {
-      saveDocs(migrateDocs)
-      docs = migrateDocs
+  let localDocs = loadLocalDocs()
+  if (localDocs && localDocs.length > 0) {
+    const migratedDocs = migrateToTree(localDocs)
+    if (migratedDocs !== localDocs) {
+      saveLocalDocs(migratedDocs)
+      localDocs = migratedDocs
     }
-    // If hash points to a valid doc, prefer it over localStorage
     let currentDocId
-    if (hashDocId && docs.find((d) => d.id === hashDocId && d.type === 'doc')) {
+    if (hashDocId && localDocs.find((d) => d.id === hashDocId && d.type === 'doc')) {
       currentDocId = hashDocId
     } else {
       currentDocId = localStorage.getItem(CURRENT_KEY)
-      if (!currentDocId || !docs.find((d) => d.id === currentDocId)) {
-        currentDocId = docs.find((d) => d.type === 'doc')?.id || docs[0].id
+      if (!currentDocId || !localDocs.find((d) => d.id === currentDocId)) {
+        currentDocId = localDocs.find((d) => d.type === 'doc')?.id || localDocs[0].id
       }
     }
-    return { docs, currentDocId }
+    return {
+      localDocs,
+      fileDocs: [],
+      workspaceItems: [],
+      workspaceRoot: null,
+      currentDocId,
+      recentDocIds: buildRecentDocIds([...localDocs], currentDocId),
+    }
   }
 
-  // Fresh start
   const doc = createBlankItem('Untitled', 'doc', null)
-  saveDocs([doc])
+  saveLocalDocs([doc])
   localStorage.setItem(CURRENT_KEY, doc.id)
-  return { docs: [doc], currentDocId: doc.id }
+  return {
+    localDocs: [doc],
+    fileDocs: [],
+    workspaceItems: [],
+    workspaceRoot: null,
+    currentDocId: doc.id,
+    recentDocIds: [doc.id],
+  }
 }
 
-// Collect all descendant IDs recursively
+function buildRecentDocIds(docs, currentDocId, existingIds = []) {
+  const docIds = docs.filter((doc) => doc.type === 'doc').map((doc) => doc.id)
+  const validExisting = existingIds.filter((id) => docIds.includes(id) && id !== currentDocId)
+  const remaining = docIds.filter((id) => id !== currentDocId && !validExisting.includes(id))
+  return [currentDocId, ...validExisting, ...remaining].filter(Boolean)
+}
+
+function touchRecentDocIds(recentDocIds, docId) {
+  return [docId, ...recentDocIds.filter((id) => id !== docId)]
+}
+
 function collectDescendants(docs, id) {
   const children = docs.filter((d) => d.parentId === id)
   let ids = []
@@ -149,21 +216,19 @@ function collectDescendants(docs, id) {
   return ids
 }
 
-// Collect all img://{id} references from all stored docs
 function collectImageRefs(docs) {
   const refs = new Set()
   for (const doc of docs) {
-    if (doc.type !== 'doc') continue
+    if (doc.type !== 'doc' || doc.source !== 'local') continue
     const content = loadDocContent(doc.id)
     if (!content) continue
     const json = JSON.stringify(content)
     const matches = json.matchAll(/"img:\/\/([^"]+)"/g)
-    for (const m of matches) refs.add(m[1])
+    for (const match of matches) refs.add(match[1])
   }
   return refs
 }
 
-// Remove images from IndexedDB that are not referenced by any document
 async function cleanupOrphanImages(docs) {
   try {
     const usedIds = collectImageRefs(docs)
@@ -171,7 +236,9 @@ async function cleanupOrphanImages(docs) {
     for (const id of allIds) {
       if (!usedIds.has(id)) await deleteImage(id)
     }
-  } catch { /* ignore cleanup errors */ }
+  } catch {
+    // ignore cleanup errors
+  }
 }
 
 export default function useDocuments(editor, { hashDocId, setHash, replaceHash } = {}) {
@@ -184,74 +251,104 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
   editorRef.current = editor
   stateRef.current = state
 
-  // Flush: save current editor content immediately
-  const flush = useCallback(() => {
+  const getAllDocs = useCallback(
+    (nextState = stateRef.current) => [...nextState.localDocs, ...nextState.fileDocs],
+    []
+  )
+
+  const getDocById = useCallback(
+    (id, nextState = stateRef.current) => getAllDocs(nextState).find((doc) => doc.id === id),
+    [getAllDocs]
+  )
+
+  const loadIntoEditor = useCallback(async (id) => {
+    const ed = editorRef.current
+    const doc = getDocById(id)
+    if (!ed || !doc) return
+
+    if (doc.source === 'file') {
+      const text = await readTextFile(doc.path)
+      ed.commands.setContent(markdownToHtml(text || ''))
+      return
+    }
+
+    const raw = loadDocContent(id)
+    const content = raw ? await resolveImageRefs(raw) : null
+    ed.commands.setContent(content || { type: 'doc', content: [{ type: 'paragraph' }] })
+  }, [getDocById])
+
+  const flush = useCallback(async () => {
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
     }
+
     const ed = editorRef.current
-    const { currentDocId, docs } = stateRef.current
-    if (!ed || !currentDocId) return
+    const { currentDocId, localDocs, fileDocs } = stateRef.current
+    const doc = [...localDocs, ...fileDocs].find((item) => item.id === currentDocId)
+    if (!ed || !doc) return
+
+    if (doc.source === 'file') {
+      const markdown = editorToMarkdown(ed)
+      await writeTextFile(doc.path, markdown)
+      setLastSaved(new Date())
+      setState((s) => ({
+        ...s,
+        fileDocs: s.fileDocs.map((item) =>
+          item.id === doc.id ? { ...item, updatedAt: Date.now(), name: fileNameFromPath(doc.path) } : item
+        ),
+      }))
+      return
+    }
+
     const json = dehydrateImageRefs(ed.getJSON())
     saveDocContent(currentDocId, json)
-    // Update updatedAt
-    const updatedDocs = docs.map((d) =>
-      d.id === currentDocId ? { ...d, updatedAt: Date.now() } : d
+    const updatedLocalDocs = localDocs.map((item) =>
+      item.id === currentDocId ? { ...item, updatedAt: Date.now() } : item
     )
-    saveDocs(updatedDocs)
+    saveLocalDocs(updatedLocalDocs)
     setLastSaved(new Date())
-    setState((s) => ({ ...s, docs: updatedDocs }))
+    setState((s) => ({ ...s, localDocs: updatedLocalDocs }))
   }, [])
 
-  // Load content into editor for a given doc id
-  const loadIntoEditor = useCallback(async (id) => {
-    const ed = editorRef.current
-    if (!ed) return
-    const raw = loadDocContent(id)
-    const content = raw ? await resolveImageRefs(raw) : null
-    ed.commands.setContent(content || { type: 'doc', content: [{ type: 'paragraph' }] })
-  }, [])
-
-  const switchDoc = useCallback((id, { pushHistory = true } = {}) => {
+  const switchDoc = useCallback(async (id, { pushHistory = true } = {}) => {
     if (id === stateRef.current.currentDocId) return
-    flush()
+    await flush()
     revokeAllUrls()
-    setState((s) => ({ ...s, currentDocId: id }))
+    setState((s) => ({
+      ...s,
+      currentDocId: id,
+      recentDocIds: touchRecentDocIds(s.recentDocIds, id),
+    }))
     localStorage.setItem(CURRENT_KEY, id)
-    loadIntoEditor(id)
+    await loadIntoEditor(id)
     if (pushHistory && setHash) setHash(id)
   }, [flush, loadIntoEditor, setHash])
 
-  // Initialize editor content on first editor ready
   useEffect(() => {
     if (!editor) return
-    loadIntoEditor(state.currentDocId)
+    void loadIntoEditor(state.currentDocId)
     if (replaceHash) replaceHash(state.currentDocId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
 
-  // Sync with hash changes from browser back/forward
   useEffect(() => {
     if (!hashDocId) return
-    const { docs, currentDocId } = stateRef.current
+    const { currentDocId } = stateRef.current
     if (hashDocId === currentDocId) return
-    if (docs.find((d) => d.id === hashDocId && d.type === 'doc')) {
-      switchDoc(hashDocId, { pushHistory: false })
+    if (getDocById(hashDocId)) {
+      void switchDoc(hashDocId, { pushHistory: false })
     }
-  }, [hashDocId, switchDoc])
+  }, [getDocById, hashDocId, switchDoc])
 
-  // Auto-save on editor update (debounced)
   useEffect(() => {
     if (!editor) return
 
     const handleUpdate = () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-      }
+      if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {
         timerRef.current = null
-        flush()
+        void flush()
       }, SAVE_DELAY)
     }
 
@@ -265,152 +362,353 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     }
   }, [editor, flush])
 
-  // Save on app/browser close
-  useEffect(() => {
-    return onAppClose(() => flush())
-  }, [flush])
+  useEffect(() => onAppClose(() => { void flush() }), [flush])
+
+  const openFile = useCallback(async (file) => {
+    if (!file) return null
+
+    await flush()
+
+    if (!file.path) {
+      const { localDocs } = stateRef.current
+      const doc = createBlankItem(uniqueName(localDocs, file.name || 'Imported', null), 'doc', null)
+      setState((s) => ({
+        ...s,
+        localDocs: [...s.localDocs, doc],
+        currentDocId: doc.id,
+        recentDocIds: touchRecentDocIds(s.recentDocIds, doc.id),
+      }))
+      saveLocalDocs([...stateRef.current.localDocs, doc])
+      localStorage.setItem(CURRENT_KEY, doc.id)
+      const ed = editorRef.current
+      if (ed) ed.commands.setContent(markdownToHtml(file.content || ''))
+      if (setHash) setHash(doc.id)
+      return doc.id
+    }
+
+    const existing = stateRef.current.fileDocs.find((doc) => doc.path === file.path)
+    if (existing) {
+      await switchDoc(existing.id)
+      return existing.id
+    }
+
+    const doc = createFileDoc(file.path)
+    setState((s) => ({
+      ...s,
+      fileDocs: [...s.fileDocs, doc],
+      currentDocId: doc.id,
+      recentDocIds: touchRecentDocIds(s.recentDocIds, doc.id),
+    }))
+    localStorage.setItem(CURRENT_KEY, doc.id)
+    const ed = editorRef.current
+    if (ed) ed.commands.setContent(markdownToHtml(file.content || ''))
+    if (setHash) setHash(doc.id)
+    return doc.id
+  }, [flush, setHash, switchDoc])
+
+  const openFileDialog = useCallback(async () => {
+    const file = await openTextFileDialog()
+    if (!file) return
+    try {
+      await openFile(file)
+    } catch (error) {
+      window.alert(`Failed to open file: ${error.message}`)
+    }
+  }, [openFile])
+
+  const openDirectory = useCallback(async () => {
+    const dirPath = await openDirectoryDialog()
+    if (!dirPath) return
+
+    try {
+      const entries = await scanDirectory(dirPath)
+      const workspaceItems = entries.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        type: entry.entryType,
+        parentId: entry.parentId,
+        path: entry.path,
+        source: 'workspace',
+      }))
+      setState((s) => ({
+        ...s,
+        workspaceItems,
+        workspaceRoot: dirPath,
+      }))
+    } catch (error) {
+      window.alert(`Failed to open directory: ${error.message}`)
+    }
+  }, [])
+
+  const openWorkspaceDoc = useCallback(async (item) => {
+    if (!item?.path || item.type !== 'doc') return
+    try {
+      const content = await readTextFile(item.path)
+      await openFile({ path: item.path, name: item.name, content })
+    } catch (error) {
+      window.alert(`Failed to open file: ${error.message}`)
+    }
+  }, [openFile])
 
   const createDoc = useCallback((parentId = null) => {
-    flush()
-    const { docs } = stateRef.current
-    const name = uniqueName(docs, 'Untitled', parentId)
+    if (stateRef.current.workspaceItems.length > 0) return null
+    void flush()
+    const { localDocs } = stateRef.current
+    const name = uniqueName(localDocs, 'Untitled', parentId)
     const doc = createBlankItem(name, 'doc', parentId)
-    setState((s) => {
-      const newDocs = [...s.docs, doc]
-      saveDocs(newDocs)
-      localStorage.setItem(CURRENT_KEY, doc.id)
-      return { docs: newDocs, currentDocId: doc.id }
-    })
-    // Clear editor for new doc
+    const nextLocalDocs = [...localDocs, doc]
+    saveLocalDocs(nextLocalDocs)
+    setState((s) => ({
+      ...s,
+      localDocs: nextLocalDocs,
+      currentDocId: doc.id,
+      recentDocIds: touchRecentDocIds(s.recentDocIds, doc.id),
+    }))
     const ed = editorRef.current
     if (ed) {
       ed.commands.setContent({ type: 'doc', content: [{ type: 'paragraph' }] })
     }
+    localStorage.setItem(CURRENT_KEY, doc.id)
     if (setHash) setHash(doc.id)
     return doc.id
   }, [flush, setHash])
 
   const createFolder = useCallback((parentId = null) => {
-    const { docs } = stateRef.current
-    const name = uniqueName(docs, 'New Folder', parentId)
+    if (stateRef.current.workspaceItems.length > 0) return null
+    const { localDocs } = stateRef.current
+    const name = uniqueName(localDocs, 'New Folder', parentId)
     const folder = createBlankItem(name, 'folder', parentId)
-    setState((s) => {
-      const newDocs = [...s.docs, folder]
-      saveDocs(newDocs)
-      return { ...s, docs: newDocs }
-    })
+    const nextLocalDocs = [...localDocs, folder]
+    saveLocalDocs(nextLocalDocs)
+    setState((s) => ({ ...s, localDocs: nextLocalDocs }))
     return folder.id
   }, [])
 
   const deleteItem = useCallback((id) => {
-    const { docs, currentDocId } = stateRef.current
+    if (stateRef.current.workspaceItems.length > 0) return
 
-    // Collect all IDs to delete (item + descendants)
-    const descendantIds = collectDescendants(docs, id)
+    const { localDocs, currentDocId } = stateRef.current
+    const descendantIds = collectDescendants(localDocs, id)
     const allDeleteIds = new Set([id, ...descendantIds])
-
-    // Check: at least 1 doc must remain after deletion
-    const remainingDocs = docs.filter((d) => !allDeleteIds.has(d.id) && d.type === 'doc')
+    const remainingDocs = localDocs.filter((d) => !allDeleteIds.has(d.id) && d.type === 'doc')
     if (remainingDocs.length === 0) return
 
-    // Confirm if deleting multiple items
     if (allDeleteIds.size > 1) {
       if (!window.confirm(`Delete this item and its ${allDeleteIds.size - 1} child item(s)?`)) return
     }
 
-    flush()
+    void flush()
 
-    // Remove content for all docs being deleted
     for (const delId of allDeleteIds) {
-      const item = docs.find((d) => d.id === delId)
+      const item = localDocs.find((d) => d.id === delId)
       if (item && item.type === 'doc') {
         localStorage.removeItem(DOC_PREFIX + delId)
       }
     }
 
-    const newDocs = docs.filter((d) => !allDeleteIds.has(d.id))
-    saveDocs(newDocs)
+    const nextLocalDocs = localDocs.filter((d) => !allDeleteIds.has(d.id))
+    saveLocalDocs(nextLocalDocs)
 
-    let newCurrentId = currentDocId
+    let nextCurrentId = currentDocId
     if (allDeleteIds.has(currentDocId)) {
-      newCurrentId = remainingDocs[0].id
-      localStorage.setItem(CURRENT_KEY, newCurrentId)
-      loadIntoEditor(newCurrentId)
-      if (setHash) setHash(newCurrentId)
+      nextCurrentId = remainingDocs[0].id
+      localStorage.setItem(CURRENT_KEY, nextCurrentId)
+      void loadIntoEditor(nextCurrentId)
+      if (setHash) setHash(nextCurrentId)
     }
 
-    setState({ docs: newDocs, currentDocId: newCurrentId })
-
-    // Async: clean up orphan images in IndexedDB
-    cleanupOrphanImages(newDocs)
+    setState((s) => ({
+      ...s,
+      localDocs: nextLocalDocs,
+      currentDocId: nextCurrentId,
+      recentDocIds: buildRecentDocIds(nextLocalDocs, nextCurrentId, s.recentDocIds),
+    }))
+    void cleanupOrphanImages(nextLocalDocs)
   }, [flush, loadIntoEditor, setHash])
 
   const moveItem = useCallback((id, newParentId) => {
-    const { docs } = stateRef.current
-    const item = docs.find((d) => d.id === id)
-    if (!item) return
-    if (item.parentId === newParentId) return
-    // Prevent moving into itself or its own descendants
-    if (newParentId === id) return
-    const descendants = new Set(collectDescendants(docs, id))
+    if (stateRef.current.workspaceItems.length > 0) return
+
+    const { localDocs } = stateRef.current
+    const item = localDocs.find((d) => d.id === id)
+    if (!item || item.parentId === newParentId || newParentId === id) return
+
+    const descendants = new Set(collectDescendants(localDocs, id))
     if (newParentId && descendants.has(newParentId)) return
-    // Prevent duplicate names in the target folder
-    if (hasDuplicateName(docs, item.name, newParentId, id)) {
+
+    if (hasDuplicateName(localDocs, item.name, newParentId, id)) {
       const targetName = newParentId
-        ? docs.find((d) => d.id === newParentId)?.name || 'target folder'
+        ? localDocs.find((d) => d.id === newParentId)?.name || 'target folder'
         : 'root'
-      alert(`"${item.name}" already exists in ${targetName}. Please rename it first.`)
+      window.alert(`"${item.name}" already exists in ${targetName}. Please rename it first.`)
       return
     }
 
-    setState((s) => {
-      const newDocs = s.docs.map((d) =>
-        d.id === id ? { ...d, parentId: newParentId, updatedAt: Date.now() } : d
-      )
-      saveDocs(newDocs)
-      return { ...s, docs: newDocs }
-    })
+    const nextLocalDocs = localDocs.map((d) =>
+      d.id === id ? { ...d, parentId: newParentId, updatedAt: Date.now() } : d
+    )
+    saveLocalDocs(nextLocalDocs)
+    setState((s) => ({ ...s, localDocs: nextLocalDocs }))
   }, [])
 
   const renameDoc = useCallback((id, name) => {
     const trimmed = name.trim()
-    if (!trimmed) return // reject empty name
-    const { docs } = stateRef.current
-    const item = docs.find((d) => d.id === id)
-    if (!item) return
-    if (hasDuplicateName(docs, trimmed, item.parentId, id)) {
-      alert(`"${trimmed}" already exists in this location. Please use a different name.`)
+    if (!trimmed) return
+
+    const localItem = stateRef.current.localDocs.find((doc) => doc.id === id)
+    if (!localItem) {
+      window.alert('Files from disk cannot be renamed from the editor yet. Use Save As instead.')
       return
     }
-    setState((s) => {
-      const newDocs = s.docs.map((d) =>
-        d.id === id ? { ...d, name: trimmed, updatedAt: Date.now() } : d
-      )
-      saveDocs(newDocs)
-      return { ...s, docs: newDocs }
-    })
+
+    if (hasDuplicateName(stateRef.current.localDocs, trimmed, localItem.parentId, id)) {
+      window.alert(`"${trimmed}" already exists in this location. Please use a different name.`)
+      return
+    }
+
+    const nextLocalDocs = stateRef.current.localDocs.map((doc) =>
+      doc.id === id ? { ...doc, name: trimmed, updatedAt: Date.now() } : doc
+    )
+    saveLocalDocs(nextLocalDocs)
+    setState((s) => ({ ...s, localDocs: nextLocalDocs }))
   }, [])
 
-  const closeTab = useCallback((id) => {
-    const { docs, currentDocId } = stateRef.current
-    const openDocs = docs.filter((d) => d.type === 'doc')
-    if (openDocs.length <= 1) return
+  const saveCurrentDocAs = useCallback(async () => {
+    const ed = editorRef.current
+    const currentDoc = getDocById(stateRef.current.currentDocId)
+    if (!ed || !currentDoc) return null
 
-    if (id === currentDocId) {
-      const idx = openDocs.findIndex((d) => d.id === id)
-      const next = openDocs[idx + 1] || openDocs[idx - 1]
-      if (next) switchDoc(next.id)
+    try {
+      const markdown = editorToMarkdown(ed)
+      const suggestedName = currentDoc.source === 'file'
+        ? currentDoc.name
+        : `${currentDoc.name.replace(/\.(md|markdown|txt)$/i, '')}.md`
+      const savedPath = await saveTextFile(markdown, suggestedName, 'text/markdown')
+      if (!savedPath) return null
+      if (!isTauri()) {
+        setLastSaved(new Date())
+        return savedPath
+      }
+
+      const nextFileDoc = {
+        ...createFileDoc(savedPath, currentDoc.id),
+        updatedAt: Date.now(),
+      }
+
+      setState((s) => {
+        const nextLocalDocs = s.localDocs.filter((doc) => doc.id !== currentDoc.id)
+        const nextFileDocs = [
+          ...s.fileDocs.filter((doc) => doc.id !== currentDoc.id && doc.path !== savedPath),
+          nextFileDoc,
+        ]
+        saveLocalDocs(nextLocalDocs)
+        localStorage.removeItem(DOC_PREFIX + currentDoc.id)
+        return {
+          ...s,
+          localDocs: nextLocalDocs,
+          fileDocs: nextFileDocs,
+          currentDocId: currentDoc.id,
+          recentDocIds: touchRecentDocIds(
+            buildRecentDocIds([...nextLocalDocs, ...nextFileDocs], currentDoc.id, s.recentDocIds),
+            currentDoc.id
+          ),
+        }
+      })
+
+      localStorage.setItem(CURRENT_KEY, currentDoc.id)
+      setLastSaved(new Date())
+      return savedPath
+    } catch (error) {
+      window.alert(`Failed to save file: ${error.message}`)
+      return null
     }
-  }, [switchDoc])
+  }, [getDocById])
 
-  const currentDoc = state.docs.find((d) => d.id === state.currentDocId) || state.docs[0]
+  const saveCurrentDoc = useCallback(async () => {
+    const currentDoc = getDocById(stateRef.current.currentDocId)
+    if (!currentDoc) return null
+
+    if (currentDoc.source === 'file') {
+      try {
+        await flush()
+        return currentDoc.path
+      } catch (error) {
+        window.alert(`Failed to save file: ${error.message}`)
+        return null
+      }
+    }
+
+    return saveCurrentDocAs()
+  }, [flush, getDocById, saveCurrentDocAs])
+
+  const closeTab = useCallback((id) => {
+    const { currentDocId, fileDocs } = stateRef.current
+    const allDocs = getAllDocs()
+    if (allDocs.length <= 1) return
+
+    const fileDoc = fileDocs.find((doc) => doc.id === id)
+    if (!fileDoc) {
+      const localDocs = stateRef.current.localDocs.filter((doc) => doc.type === 'doc')
+      if (localDocs.length <= 1) return
+      if (id === currentDocId) {
+        const next = stateRef.current.recentDocIds
+          .filter((docId) => docId !== id)
+          .map((docId) => localDocs.find((doc) => doc.id === docId))
+          .find(Boolean)
+        if (next) void switchDoc(next.id)
+      }
+      return
+    }
+
+    const nextFileDocs = fileDocs.filter((doc) => doc.id !== id)
+    const remainingDocs = [...stateRef.current.localDocs, ...nextFileDocs]
+    const remainingRecentDocIds = stateRef.current.recentDocIds.filter((docId) => docId !== id)
+    const nextCurrentId = id === currentDocId
+      ? remainingRecentDocIds.find((docId) => remainingDocs.some((doc) => doc.id === docId)) || currentDocId
+      : currentDocId
+
+    setState((s) => ({
+      ...s,
+      fileDocs: nextFileDocs,
+      currentDocId: nextCurrentId,
+      recentDocIds: buildRecentDocIds(remainingDocs, nextCurrentId, remainingRecentDocIds),
+    }))
+
+    if (id === currentDocId && nextCurrentId && nextCurrentId !== id) {
+      localStorage.setItem(CURRENT_KEY, nextCurrentId)
+      void loadIntoEditor(nextCurrentId)
+      if (setHash) setHash(nextCurrentId)
+    }
+  }, [getAllDocs, loadIntoEditor, setHash])
+
+  const docs = getAllDocs(state)
+  const currentDoc = docs.find((doc) => doc.id === state.currentDocId) || docs[0]
+  const visibleTabIds = state.recentDocIds
+    .filter((id) => docs.some((doc) => doc.id === id))
+    .slice(0, MAX_VISIBLE_TABS)
+  const visibleTabs = visibleTabIds
+    .map((id) => docs.find((doc) => doc.id === id))
+    .filter(Boolean)
+  const treeItems = state.workspaceItems.length > 0 ? state.workspaceItems : state.localDocs
+  const currentTreeItemId = state.workspaceItems.length > 0 ? currentDoc?.path || null : currentDoc?.id || null
 
   return {
-    docs: state.docs,
+    docs,
+    visibleTabs,
+    treeItems,
+    treeEditable: state.workspaceItems.length === 0,
     currentDocId: state.currentDocId,
     currentDocName: currentDoc?.name || 'Untitled',
+    currentDocPath: currentDoc?.path || null,
+    currentDocSource: currentDoc?.source || 'local',
+    currentTreeItemId,
     lastSaved,
     switchDoc,
+    openWorkspaceDoc,
+    openFileDialog,
+    openDirectory,
+    saveCurrentDoc,
+    saveCurrentDocAs,
     createDoc,
     createFolder,
     deleteItem,

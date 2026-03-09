@@ -52,7 +52,7 @@ function collectDescendantIds(items, id) {
 // which would cancel in-progress drag operations.
 function TreeNode({ node, depth, ctx }) {
   const {
-    docs, expanded, currentDocId, renamingId, renameValue,
+    docs, editable, expanded, currentItemId, renamingId, renameValue,
     dragOverId, draggingId, inputRef, expandTimerRef,
     toggleExpand, onSwitchDoc, setRenamingId, setRenameValue,
     handleContextMenu, handleRenameKeyDown, commitRename,
@@ -63,7 +63,7 @@ function TreeNode({ node, depth, ctx }) {
   const isFolder = node.type === 'folder'
   const hasKids = node.children.length > 0 || hasChildren(docs, node.id)
   const isExpanded = expanded.has(node.id)
-  const isActive = node.type === 'doc' && node.id === currentDocId
+  const isActive = node.type === 'doc' && node.id === currentItemId
   const isRenaming = renamingId === node.id
   const showChevron = isFolder || hasKids
   const isDragOver = dragOverId === node.id && draggingId !== node.id
@@ -74,23 +74,25 @@ function TreeNode({ node, depth, ctx }) {
     if (isFolder) {
       toggleExpand(node.id)
     } else {
-      onSwitchDoc(node.id)
+      onSwitchDoc(node)
     }
   }
 
   const handleDoubleClick = (e) => {
+    if (!editable) return
     e.stopPropagation()
     setRenamingId(node.id)
     setRenameValue(node.name)
   }
 
   const handleRightClick = (e) => {
+    if (!editable) return
     handleContextMenu(e, node.id, node.type)
   }
 
   // --- Drag source ---
   const handleDragStart = (e) => {
-    if (isRenaming) {
+    if (!editable || isRenaming) {
       e.preventDefault()
       return
     }
@@ -150,7 +152,7 @@ function TreeNode({ node, depth, ctx }) {
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleRightClick}
-        draggable={!isRenaming}
+        draggable={editable && !isRenaming}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
@@ -202,7 +204,8 @@ function TreeNode({ node, depth, ctx }) {
 
 export default function FileTree({
   docs,
-  currentDocId,
+  editable = true,
+  currentItemId,
   onSwitchDoc,
   onCreateDoc,
   onCreateFolder,
@@ -269,10 +272,11 @@ export default function FileTree({
   }, [commitRename])
 
   const handleContextMenu = useCallback((e, itemId = null, itemType = null) => {
+    if (!editable) return
     e.preventDefault()
     e.stopPropagation()
     setContextMenu({ x: e.clientX, y: e.clientY, itemId, itemType })
-  }, [])
+  }, [editable])
 
   const handleContextRename = useCallback((id) => {
     const item = docs.find((d) => d.id === id)
@@ -301,6 +305,7 @@ export default function FileTree({
   }, [])
 
   const canDrop = useCallback((sourceId, targetId) => {
+    if (!editable) return false
     if (!sourceId || sourceId === targetId) return false
     // Can't drop onto own descendant
     const descendants = collectDescendantIds(docs, sourceId)
@@ -309,7 +314,7 @@ export default function FileTree({
     const source = docs.find((d) => d.id === sourceId)
     if (source && source.parentId === targetId) return false
     return true
-  }, [docs])
+  }, [docs, editable])
 
   const handleDrop = useCallback((targetId) => {
     clearExpandTimer()
@@ -325,7 +330,7 @@ export default function FileTree({
 
   // Bundle all state and callbacks for TreeNode
   const ctx = {
-    docs, expanded, currentDocId, renamingId, renameValue,
+    docs, editable, expanded, currentItemId, renamingId, renameValue,
     dragOverId, draggingId, inputRef, expandTimerRef,
     toggleExpand, onSwitchDoc, setRenamingId, setRenameValue,
     handleContextMenu, handleRenameKeyDown, commitRename,
@@ -365,7 +370,7 @@ export default function FileTree({
         ref={treeContentRef}
         className={`${styles.treeContent} ${dragOverId === '__root__' ? styles.rootDropTarget : ''}`}
         onContextMenu={(e) => {
-          if (e.target === treeContentRef.current) {
+          if (editable && e.target === treeContentRef.current) {
             handleContextMenu(e)
           }
         }}
@@ -378,7 +383,7 @@ export default function FileTree({
         ))}
       </div>
 
-      {contextMenu && (
+      {editable && contextMenu && (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}

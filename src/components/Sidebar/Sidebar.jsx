@@ -21,7 +21,8 @@ export default function Sidebar({
   onToggle,
   editor,
   docs,
-  currentDocId,
+  editable,
+  currentItemId,
   onSwitchDoc,
   onCreateDoc,
   onCreateFolder,
@@ -112,7 +113,8 @@ export default function Sidebar({
         <div className={styles.fileSection}>
           <FileTree
             docs={docs}
-            currentDocId={currentDocId}
+            editable={editable}
+            currentItemId={currentItemId}
             onSwitchDoc={onSwitchDoc}
             onCreateDoc={onCreateDoc}
             onCreateFolder={onCreateFolder}
