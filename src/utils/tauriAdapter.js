@@ -155,6 +155,18 @@ export async function writeTextFile(path, content) {
   throw new Error('Writing arbitrary files is only supported in the desktop app.')
 }
 
+export async function moveFile(from, to) {
+  if (!from || !to) throw new Error('Missing source or destination path.')
+
+  if (isTauri()) {
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('move_file', { from, to })
+    return
+  }
+
+  throw new Error('Moving files is only supported in the desktop app.')
+}
+
 export async function scanDirectory(path) {
   if (!path) return []
 

@@ -39,6 +39,7 @@ export default function App() {
     saveCurrentDoc,
     saveCurrentDocAs,
     createDoc,
+    createNewFile,
     createFolder,
     deleteItem,
     closeTab,
@@ -149,7 +150,7 @@ export default function App() {
           docs={visibleTabs}
           currentDocId={currentDocId}
           onSwitch={switchDoc}
-          onCreate={createDoc}
+          onCreate={createNewFile}
           onClose={closeTab}
           onRename={renameDoc}
         />

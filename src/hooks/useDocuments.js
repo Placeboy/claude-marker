@@ -3,6 +3,7 @@ import { dehydrateImageRefs, resolveImageRefs, revokeAllUrls, getAllImageIds, de
 import { editorToMarkdown, markdownToHtml } from '../utils/markdown.js'
 import {
   isTauri,
+  moveFile,
   onAppClose,
   openDirectoryDialog,
   openTextFileDialog,
@@ -203,7 +204,8 @@ function buildRecentDocIds(docs, currentDocId, existingIds = []) {
 }
 
 function touchRecentDocIds(recentDocIds, docId) {
-  return [docId, ...recentDocIds.filter((id) => id !== docId)]
+  if (recentDocIds.includes(docId)) return recentDocIds
+  return [...recentDocIds, docId]
 }
 
 function collectDescendants(docs, id) {
@@ -416,6 +418,16 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     }
   }, [openFile])
 
+  const createNewFile = useCallback(async () => {
+    const savedPath = await saveTextFile('', 'Untitled.md', 'text/markdown')
+    if (!savedPath) return
+    try {
+      await openFile({ path: savedPath, name: fileNameFromPath(savedPath), content: '' })
+    } catch (error) {
+      window.alert(`Failed to create file: ${error.message}`)
+    }
+  }, [openFile])
+
   const openDirectory = useCallback(async () => {
     const dirPath = await openDirectoryDialog()
     if (!dirPath) return
@@ -526,10 +538,81 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     void cleanupOrphanImages(nextLocalDocs)
   }, [flush, loadIntoEditor, setHash])
 
-  const moveItem = useCallback((id, newParentId) => {
-    if (stateRef.current.workspaceItems.length > 0) return
+  const moveItem = useCallback(async (id, newParentId) => {
+    const { workspaceItems, workspaceRoot, localDocs, fileDocs } = stateRef.current
 
-    const { localDocs } = stateRef.current
+    // --- Workspace mode: move on filesystem ---
+    if (workspaceItems.length > 0) {
+      const item = workspaceItems.find((d) => d.id === id)
+      if (!item) return
+
+      // Determine target folder path
+      let targetFolderPath
+      if (newParentId) {
+        const target = workspaceItems.find((d) => d.id === newParentId)
+        if (!target || target.type !== 'folder') return
+        targetFolderPath = target.path
+      } else {
+        targetFolderPath = workspaceRoot
+      }
+
+      if (!targetFolderPath) return
+
+      // In workspace mode, the actual parentId is the folder path, not null
+      const effectiveParentId = newParentId || workspaceRoot
+
+      const newPath = targetFolderPath + '/' + item.name
+      if (newPath === item.path) return
+
+      try {
+        await moveFile(item.path, newPath)
+      } catch (error) {
+        window.alert(`Failed to move "${item.name}": ${error.message || error}`)
+        return
+      }
+
+      // Rewrite paths in workspaceItems for the moved item and all descendants
+      const oldPrefix = item.path
+      const newPrefix = newPath
+
+      setState((s) => {
+        const nextWorkspaceItems = s.workspaceItems.map((d) => {
+          if (d.id === id) {
+            // The moved item itself
+            return { ...d, id: newPath, path: newPath, parentId: effectiveParentId }
+          }
+          if (d.path.startsWith(oldPrefix + '/')) {
+            // A descendant — rewrite the prefix portion
+            const suffix = d.path.slice(oldPrefix.length)
+            const updatedPath = newPrefix + suffix
+            const updatedParentId = d.parentId === oldPrefix
+              ? newPath
+              : d.parentId?.startsWith(oldPrefix + '/')
+                ? newPrefix + d.parentId.slice(oldPrefix.length)
+                : d.parentId
+            return { ...d, id: updatedPath, path: updatedPath, parentId: updatedParentId }
+          }
+          return d
+        })
+
+        // Update fileDocs if any open tab references moved paths
+        const nextFileDocs = s.fileDocs.map((fd) => {
+          if (fd.path === oldPrefix) {
+            return { ...fd, path: newPath, name: fileNameFromPath(newPath) }
+          }
+          if (fd.path.startsWith(oldPrefix + '/')) {
+            const updatedPath = newPrefix + fd.path.slice(oldPrefix.length)
+            return { ...fd, path: updatedPath, name: fileNameFromPath(updatedPath) }
+          }
+          return fd
+        })
+
+        return { ...s, workspaceItems: nextWorkspaceItems, fileDocs: nextFileDocs }
+      })
+      return
+    }
+
+    // --- Local mode: in-memory move ---
     const item = localDocs.find((d) => d.id === id)
     if (!item || item.parentId === newParentId || newParentId === id) return
 
@@ -649,13 +732,26 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     const fileDoc = fileDocs.find((doc) => doc.id === id)
     if (!fileDoc) {
       const localDocs = stateRef.current.localDocs.filter((doc) => doc.type === 'doc')
-      if (localDocs.length <= 1) return
+      const isLastLocalDoc = localDocs.length <= 1
+
       if (id === currentDocId) {
-        const next = stateRef.current.recentDocIds
-          .filter((docId) => docId !== id)
-          .map((docId) => localDocs.find((doc) => doc.id === docId))
-          .find(Boolean)
-        if (next) void switchDoc(next.id)
+        const ids = stateRef.current.recentDocIds
+        const idx = ids.indexOf(id)
+        const nextId = ids[idx + 1] || ids[idx - 1]
+        if (nextId) void switchDoc(nextId)
+      }
+
+      if (isLastLocalDoc) {
+        const nextLocalDocs = stateRef.current.localDocs.filter((doc) => doc.id !== id)
+        saveLocalDocs(nextLocalDocs)
+        localStorage.removeItem(DOC_PREFIX + id)
+        setState((s) => ({
+          ...s,
+          localDocs: nextLocalDocs,
+          recentDocIds: s.recentDocIds.filter((docId) => docId !== id),
+        }))
+      } else {
+        setState((s) => ({ ...s, recentDocIds: s.recentDocIds.filter((docId) => docId !== id) }))
       }
       return
     }
@@ -663,9 +759,12 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     const nextFileDocs = fileDocs.filter((doc) => doc.id !== id)
     const remainingDocs = [...stateRef.current.localDocs, ...nextFileDocs]
     const remainingRecentDocIds = stateRef.current.recentDocIds.filter((docId) => docId !== id)
-    const nextCurrentId = id === currentDocId
-      ? remainingRecentDocIds.find((docId) => remainingDocs.some((doc) => doc.id === docId)) || currentDocId
-      : currentDocId
+    let nextCurrentId = currentDocId
+    if (id === currentDocId) {
+      const ids = stateRef.current.recentDocIds
+      const idx = ids.indexOf(id)
+      nextCurrentId = ids[idx + 1] || ids[idx - 1] || currentDocId
+    }
 
     setState((s) => ({
       ...s,
@@ -710,6 +809,7 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     saveCurrentDoc,
     saveCurrentDocAs,
     createDoc,
+    createNewFile,
     createFolder,
     deleteItem,
     closeTab,

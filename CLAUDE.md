@@ -25,8 +25,8 @@ npm run tauri:build  # Build native desktop app (requires Rust)
 - **Markdown conversion**: `src/utils/markdown.js` — regex-based `markdownToHtml()` import and `turndown`-based HTML→Markdown export (dynamic import).
 - **Document management**: `src/hooks/useDocuments.js` manages three document sources: `local` (localStorage), `file` (opened via native dialog), and `workspace` (folder tree). Tracks recent tabs.
 - **Styling**: CSS Modules per component + `src/styles/global.css` for CSS variables and reset. No CSS framework.
-- **Tauri adapter**: `src/utils/tauriAdapter.js` provides cross-environment helpers (`openExternal`, `saveTextFile`, `exportPdf`, `readTextFile`, `writeTextFile`, `scanMarkdownDirectory`, `onAppClose`). Includes dialog concurrency guard. Uses runtime `isTauri()` detection with dynamic imports so web builds are unaffected.
-- **Desktop shell**: `src-tauri/` contains the Tauri v2 Rust backend. Plugins: `shell`, `dialog`, `fs`. `lib.rs` provides a native macOS File menu (Open, Open Folder, Save, Save As, Export), file I/O commands, and recursive markdown directory scanning.
+- **Tauri adapter**: `src/utils/tauriAdapter.js` provides cross-environment helpers (`openExternal`, `saveTextFile`, `exportPdf`, `readTextFile`, `writeTextFile`, `moveFile`, `scanMarkdownDirectory`, `onAppClose`). Includes dialog concurrency guard. Uses runtime `isTauri()` detection with dynamic imports so web builds are unaffected.
+- **Desktop shell**: `src-tauri/` contains the Tauri v2 Rust backend. Plugins: `shell`, `dialog`, `fs`. `lib.rs` provides a native macOS File menu (Open, Open Folder, Save, Save As, Export), file I/O commands, filesystem move/rename, and recursive markdown directory scanning. Workspace drag-and-drop moves files on disk via the `move_file` command.
 
 ## Key conventions
 

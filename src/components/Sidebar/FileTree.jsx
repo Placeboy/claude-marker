@@ -92,7 +92,7 @@ function TreeNode({ node, depth, ctx }) {
 
   // --- Drag source ---
   const handleDragStart = (e) => {
-    if (!editable || isRenaming) {
+    if (isRenaming) {
       e.preventDefault()
       return
     }
@@ -152,7 +152,7 @@ function TreeNode({ node, depth, ctx }) {
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleRightClick}
-        draggable={editable && !isRenaming}
+        draggable={!isRenaming}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
@@ -305,7 +305,6 @@ export default function FileTree({
   }, [])
 
   const canDrop = useCallback((sourceId, targetId) => {
-    if (!editable) return false
     if (!sourceId || sourceId === targetId) return false
     // Can't drop onto own descendant
     const descendants = collectDescendantIds(docs, sourceId)
@@ -313,6 +312,11 @@ export default function FileTree({
     // Can't drop onto current parent (no-op)
     const source = docs.find((d) => d.id === sourceId)
     if (source && source.parentId === targetId) return false
+    // In workspace mode, only allow dropping onto folders (not files)
+    if (!editable && targetId) {
+      const target = docs.find((d) => d.id === targetId)
+      if (target && target.type !== 'folder') return false
+    }
     return true
   }, [docs, editable])
 

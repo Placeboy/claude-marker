@@ -41,6 +41,20 @@ fn write_text_file(path: String, content: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn move_file(from: String, to: String) -> Result<(), String> {
+    let to_path = std::path::Path::new(&to);
+    if to_path.exists() {
+        return Err(format!("Target already exists: {}", to));
+    }
+    if let Some(parent) = to_path.parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
+    fs::rename(&from, &to).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn scan_markdown_directory(path: String) -> Result<Vec<DirectoryEntry>, String> {
     let root = PathBuf::from(path);
     if !root.is_dir() {
@@ -229,6 +243,7 @@ pub fn run() {
             export_pdf_preview,
             read_text_file,
             write_text_file,
+            move_file,
             scan_markdown_directory
         ])
         .run(tauri::generate_context!())
