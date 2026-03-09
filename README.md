@@ -21,24 +21,58 @@ A lightweight, Notion-style Markdown editor built with React and TipTap. Runs as
 - **Syntax Highlighting** — Code blocks with highlight.js support
 - **Clean UI** — Minimal design with a centered 720px editor area, collapsible sidebar
 
-## Quick Start
+## Build from Source
+
+### Prerequisites
+
+| Tool | Minimum Version | Install |
+|------|----------------|---------|
+| **Node.js** | >= 18 | https://nodejs.org/ or `brew install node` |
+| **npm** | >= 9 (ships with Node) | |
+| **Rust** | >= 1.77 (stable) | https://rustup.rs/ |
+| **System libs** | see below | |
+
+**macOS** — Install Xcode Command Line Tools (provides clang, WebKit, etc.):
 
 ```bash
-# Install dependencies
+xcode-select --install
+```
+
+**Linux (Debian/Ubuntu)** — Install system dependencies required by Tauri:
+
+```bash
+sudo apt update
+sudo apt install -y libwebkit2gtk-4.1-dev build-essential curl wget \
+  file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+```
+
+**Windows** — Install [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) and [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (pre-installed on Windows 11).
+
+### Web Only (no Rust needed)
+
+```bash
+git clone https://github.com/Placeboy/markdown-editor.git
+cd markdown-editor
+npm install
+npm run dev        # Dev server at http://localhost:5173
+npm run build      # Production build to dist/
+```
+
+### Desktop App (Tauri)
+
+```bash
+git clone https://github.com/Placeboy/markdown-editor.git
+cd markdown-editor
 npm install
 
-# Start dev server (web)
-npm run dev
-
-# Build for production (web)
-npm run build
-
-# Start desktop app (requires Rust toolchain)
+# Development (live-reload)
 npm run tauri:dev
 
-# Build native desktop app
+# Production build — outputs installer to src-tauri/target/release/bundle/
 npm run tauri:build
 ```
+
+> On first run, Cargo will download and compile Rust dependencies. Subsequent builds will be incremental and much faster.
 
 ## Keyboard Shortcuts
 
@@ -75,16 +109,19 @@ src/
 ├── App.jsx                    # Root layout (sidebar + toolbar + editor)
 ├── components/
 │   ├── Editor/                # TipTap editor wrapper
-│   ├── Toolbar/               # Format buttons + import/export
-│   ├── Sidebar/               # Table of contents
+│   ├── Toolbar/               # Format buttons
+│   ├── Sidebar/               # Table of contents + file tree
+│   ├── TabBar/                # Document tabs
 │   └── SlashMenu/             # Slash command popup menu
 ├── extensions/
 │   └── SlashCommand.jsx       # TipTap slash command extension
 ├── hooks/
 │   ├── useAutoSave.js         # Auto-save to localStorage
+│   ├── useDocuments.js        # Multi-source document management
 │   └── useToc.js              # Extract headings for TOC
 ├── utils/
-│   └── tauriAdapter.js        # Tauri/Web cross-environment adapter
+│   ├── tauriAdapter.js        # Tauri/Web cross-environment adapter
+│   └── markdown.js            # Markdown conversion utilities
 └── styles/
     └── global.css             # CSS variables, reset, theme
 src-tauri/                     # Tauri v2 desktop shell (Rust)
@@ -92,7 +129,7 @@ src-tauri/                     # Tauri v2 desktop shell (Rust)
 ├── capabilities/default.json  # Permission declarations
 └── src/
     ├── main.rs                # Rust entry point
-    └── lib.rs                 # Tauri plugins + PDF export command
+    └── lib.rs                 # Native menu, file I/O, workspace scanning
 ```
 
 ## Tech Stack

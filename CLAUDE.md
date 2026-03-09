@@ -22,11 +22,11 @@ npm run tauri:build  # Build native desktop app (requires Rust)
 - **Slash commands**: Custom TipTap extension at `src/extensions/SlashCommand.jsx` using `@tiptap/suggestion`. The popup UI is `src/components/SlashMenu/SlashMenu.jsx`. Keyboard events are forwarded via `CustomEvent('slash-menu-keydown')`.
 - **TOC**: `src/hooks/useToc.js` extracts headings from ProseMirror doc via `doc.descendants()`. Active heading tracked with IntersectionObserver.
 - **Auto-save**: `src/hooks/useAutoSave.js` debounces (1s) and writes editor JSON to localStorage under key `markdown-editor-content`.
-- **Markdown import**: `markdownToHtml()` in `src/components/Toolbar/Toolbar.jsx` is a regex-based converter. It first extracts code blocks, then processes inline formatting, then block-level elements. Not a full parser — handles common cases.
-- **Markdown export**: Uses `turndown` library (dynamic import) to convert TipTap HTML → Markdown.
+- **Markdown conversion**: `src/utils/markdown.js` — regex-based `markdownToHtml()` import and `turndown`-based HTML→Markdown export (dynamic import).
+- **Document management**: `src/hooks/useDocuments.js` manages three document sources: `local` (localStorage), `file` (opened via native dialog), and `workspace` (folder tree). Tracks recent tabs.
 - **Styling**: CSS Modules per component + `src/styles/global.css` for CSS variables and reset. No CSS framework.
-- **Tauri adapter**: `src/utils/tauriAdapter.js` provides cross-environment helpers (`openExternal`, `saveTextFile`, `exportPdf`, `onAppClose`). Uses runtime `isTauri()` detection with dynamic imports so web builds are unaffected.
-- **Desktop shell**: `src-tauri/` contains the Tauri v2 Rust backend. Plugins: `shell` (open external URLs), `dialog` (native save/open), `fs` (file write). `lib.rs` has a `generate_pdf` command for PDF export via temp HTML.
+- **Tauri adapter**: `src/utils/tauriAdapter.js` provides cross-environment helpers (`openExternal`, `saveTextFile`, `exportPdf`, `readTextFile`, `writeTextFile`, `scanMarkdownDirectory`, `onAppClose`). Includes dialog concurrency guard. Uses runtime `isTauri()` detection with dynamic imports so web builds are unaffected.
+- **Desktop shell**: `src-tauri/` contains the Tauri v2 Rust backend. Plugins: `shell`, `dialog`, `fs`. `lib.rs` provides a native macOS File menu (Open, Open Folder, Save, Save As, Export), file I/O commands, and recursive markdown directory scanning.
 
 ## Key conventions
 
