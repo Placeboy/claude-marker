@@ -10,6 +10,7 @@ import {
   readTextFile,
   saveTextFile,
   scanDirectory,
+  watchFile,
   writeTextFile,
 } from '../utils/tauriAdapter'
 
@@ -247,6 +248,7 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
   const [state, setState] = useState(() => initState(hashDocId))
   const [lastSaved, setLastSaved] = useState(null)
   const timerRef = useRef(null)
+  const selfWriteRef = useRef(false)
   const editorRef = useRef(editor)
   const stateRef = useRef(state)
 
@@ -292,7 +294,9 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
 
     if (doc.source === 'file') {
       const markdown = editorToMarkdown(ed)
+      selfWriteRef.current = true
       await writeTextFile(doc.path, markdown)
+      setTimeout(() => { selfWriteRef.current = false }, 1500)
       setLastSaved(new Date())
       setState((s) => ({
         ...s,
@@ -365,6 +369,42 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
   }, [editor, flush])
 
   useEffect(() => onAppClose(() => { void flush() }), [flush])
+
+  // Watch the current file for external changes and reload automatically
+  useEffect(() => {
+    if (!editor) return
+    const doc = getDocById(state.currentDocId)
+    if (!doc || doc.source !== 'file' || !doc.path) return
+
+    let cancelled = false
+    let unwatchFn = null
+
+    watchFile(doc.path, async () => {
+      if (cancelled) return
+      if (selfWriteRef.current) return
+      const ed = editorRef.current
+      if (!ed) return
+      if (ed.isFocused) return
+      try {
+        const text = await readTextFile(doc.path)
+        if (cancelled) return
+        ed.commands.setContent(markdownToHtml(text || ''))
+      } catch {
+        // ignore read errors during reload
+      }
+    }).then((fn) => {
+      if (cancelled) {
+        fn()
+      } else {
+        unwatchFn = fn
+      }
+    })
+
+    return () => {
+      cancelled = true
+      if (unwatchFn) unwatchFn()
+    }
+  }, [editor, state.currentDocId, getDocById])
 
   const openFile = useCallback(async (file) => {
     if (!file) return null

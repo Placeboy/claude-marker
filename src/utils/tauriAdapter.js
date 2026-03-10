@@ -178,6 +178,19 @@ export async function scanDirectory(path) {
   return []
 }
 
+export async function watchFile(path, callback) {
+  if (!isTauri() || !path) return () => {}
+
+  const { watch } = await import('@tauri-apps/plugin-fs')
+  const unwatch = await watch(path, (event) => {
+    if (event.type?.modify || event.type === 'modify') {
+      callback()
+    }
+  }, { delayMs: 500 })
+
+  return unwatch
+}
+
 export function onAppClose(callback) {
   if (isTauri()) {
     return () => {}

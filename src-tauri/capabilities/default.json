@@ -17,6 +17,8 @@
         { "path": "$DESKTOP/**" },
         { "path": "$TEMP/**" }
       ]
-    }
+    },
+    "fs:allow-watch",
+    "fs:allow-unwatch"
   ]
 }
