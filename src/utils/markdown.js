@@ -82,6 +82,9 @@ export function markdownToHtml(md) {
     .replace(/<\/ul>\n<ul>/g, '\n')
     .replace(/<\/ol>\n<ol>/g, '\n')
 
+  // Strip Markdown backslash escapes (e.g. 1\. → 1.) but not inside code blocks
+  processed = processed.replace(/\\([\\`*_{}[\]()#+\-.!>~|])/g, '$1')
+
   codeBlocks.forEach((block, i) => {
     processed = processed.replace(`\x00CODEBLOCK${i}\x00`, block)
   })
