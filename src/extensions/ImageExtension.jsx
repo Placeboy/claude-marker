@@ -121,7 +121,7 @@ const ImageExtension = Image.extend({
         // our NodeSelection with a TextSelection. Allow dragstart through
         // so ProseMirror can handle node dragging once the node is selected.
         stopEvent(event) {
-          if (event.type === 'mousedown') return true
+          if (event.type === 'mousedown' && event.button !== 2) return true
           if (event.type === 'dblclick') return true
           if (resizing) return true
           return false
