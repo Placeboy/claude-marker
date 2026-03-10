@@ -191,6 +191,20 @@ export async function watchFile(path, callback) {
   return unwatch
 }
 
+export async function watchDirectory(path, callback) {
+  if (!isTauri() || !path) return () => {}
+
+  const { watch } = await import('@tauri-apps/plugin-fs')
+  const unwatch = await watch(path, (event) => {
+    const type = event.type
+    if (type?.create || type === 'create' || type?.remove || type === 'remove') {
+      callback(event)
+    }
+  }, { recursive: true, delayMs: 1000 })
+
+  return unwatch
+}
+
 export function onAppClose(callback) {
   if (isTauri()) {
     return () => {}

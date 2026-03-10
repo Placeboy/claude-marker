@@ -45,10 +45,23 @@
   background: var(--color-bg);
 }
 
+.tab.deleted {
+  opacity: 0.6;
+}
+
+.tab.deleted:hover {
+  opacity: 0.8;
+}
+
 .tabName {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.deletedName {
+  text-decoration: line-through;
+  font-style: italic;
 }
 
 .closeBtn {

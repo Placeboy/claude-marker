@@ -10,6 +10,7 @@ import {
   readTextFile,
   saveTextFile,
   scanDirectory,
+  watchDirectory,
   watchFile,
   writeTextFile,
 } from '../utils/tauriAdapter'
@@ -269,6 +270,7 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     const ed = editorRef.current
     const doc = getDocById(id)
     if (!ed || !doc) return
+    if (doc.deleted) return
 
     if (doc.source === 'file') {
       const text = await readTextFile(doc.path)
@@ -291,6 +293,8 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     const { currentDocId, localDocs, fileDocs } = stateRef.current
     const doc = [...localDocs, ...fileDocs].find((item) => item.id === currentDocId)
     if (!ed || !doc) return
+
+    if (doc.source === 'file' && doc.deleted) return
 
     if (doc.source === 'file') {
       const markdown = editorToMarkdown(ed)
@@ -405,6 +409,71 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
       if (unwatchFn) unwatchFn()
     }
   }, [editor, state.currentDocId, getDocById])
+
+  // Watch workspace directory for structural changes (file create/delete)
+  useEffect(() => {
+    const { workspaceRoot } = stateRef.current
+    if (!workspaceRoot) return
+
+    let cancelled = false
+    let unwatchFn = null
+
+    watchDirectory(workspaceRoot, async () => {
+      if (cancelled) return
+      try {
+        const entries = await scanDirectory(workspaceRoot)
+        if (cancelled) return
+        const nextWorkspaceItems = entries.map((entry) => ({
+          id: entry.id,
+          name: entry.name,
+          type: entry.entryType,
+          parentId: entry.parentId,
+          path: entry.path,
+          source: 'workspace',
+        }))
+
+        const workspacePaths = new Set(
+          nextWorkspaceItems.filter((i) => i.type === 'doc').map((i) => i.path)
+        )
+
+        setState((s) => {
+          const nextFileDocs = s.fileDocs.map((fd) => {
+            if (fd.source !== 'file' || !fd.path) return fd
+            const isUnderWorkspace = fd.path.startsWith(workspaceRoot + '/')
+              || fd.path.startsWith(workspaceRoot + '\\')
+            if (!isUnderWorkspace) return fd
+
+            const shouldBeDeleted = !workspacePaths.has(fd.path)
+            if (fd.deleted === shouldBeDeleted) return fd
+            return { ...fd, deleted: shouldBeDeleted || undefined }
+          })
+          // Clean up: remove the `deleted` key entirely when false/undefined
+          const cleanedFileDocs = nextFileDocs.map((fd) => {
+            if (fd.deleted) return fd
+            if ('deleted' in fd) {
+              const { deleted, ...rest } = fd
+              return rest
+            }
+            return fd
+          })
+          return { ...s, workspaceItems: nextWorkspaceItems, fileDocs: cleanedFileDocs }
+        })
+      } catch {
+        // ignore scan errors
+      }
+    }).then((fn) => {
+      if (cancelled) {
+        fn()
+      } else {
+        unwatchFn = fn
+      }
+    })
+
+    return () => {
+      cancelled = true
+      if (unwatchFn) unwatchFn()
+    }
+  }, [state.workspaceRoot])
 
   const openFile = useCallback(async (file) => {
     if (!file) return null
@@ -830,6 +899,7 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     .filter(Boolean)
   const treeItems = state.workspaceItems.length > 0 ? state.workspaceItems : state.localDocs
   const currentTreeItemId = state.workspaceItems.length > 0 ? currentDoc?.path || null : currentDoc?.id || null
+  const currentDocDeleted = currentDoc?.deleted || false
 
   return {
     docs,
@@ -840,6 +910,7 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     currentDocName: currentDoc?.name || 'Untitled',
     currentDocPath: currentDoc?.path || null,
     currentDocSource: currentDoc?.source || 'local',
+    currentDocDeleted,
     currentTreeItemId,
     lastSaved,
     switchDoc,

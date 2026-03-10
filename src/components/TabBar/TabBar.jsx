@@ -47,11 +47,11 @@ export default function TabBar({ docs, currentDocId, onSwitch, onCreate, onClose
       {docs.map((doc) => (
         <div
           key={doc.id}
-          className={`${styles.tab} ${doc.id === currentDocId ? styles.active : ''}`}
+          className={`${styles.tab} ${doc.id === currentDocId ? styles.active : ''} ${doc.deleted ? styles.deleted : ''}`}
           onClick={() => {
             if (renamingId !== doc.id) onSwitch(doc.id)
           }}
-          onDoubleClick={() => handleDoubleClick(doc)}
+          onDoubleClick={() => { if (!doc.deleted) handleDoubleClick(doc) }}
         >
           {renamingId === doc.id ? (
             <input
@@ -64,7 +64,7 @@ export default function TabBar({ docs, currentDocId, onSwitch, onCreate, onClose
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className={styles.tabName}>{doc.name}</span>
+            <span className={`${styles.tabName} ${doc.deleted ? styles.deletedName : ''}`}>{doc.name}</span>
           )}
           {docs.length > 1 && renamingId !== doc.id && (
             <button

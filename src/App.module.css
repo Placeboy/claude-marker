@@ -12,6 +12,16 @@
   height: 100vh;
 }
 
+.deletedBanner {
+  padding: 8px 16px;
+  background: var(--color-bg-hover);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
 .editorArea {
   flex: 1;
   overflow-y: auto;

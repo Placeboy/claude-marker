@@ -31,6 +31,7 @@ export default function App() {
     treeEditable,
     currentDocId,
     currentDocName,
+    currentDocDeleted,
     currentTreeItemId,
     switchDoc,
     openWorkspaceDoc,
@@ -127,6 +128,11 @@ export default function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!editor) return
+    editor.setEditable(!currentDocDeleted)
+  }, [editor, currentDocDeleted])
+
   return (
     <div className={styles.container}>
       <Sidebar
@@ -157,6 +163,9 @@ export default function App() {
         <Toolbar
           editor={editor}
         />
+        {currentDocDeleted && (
+          <div className={styles.deletedBanner}>This file has been deleted from disk.</div>
+        )}
         <div className={styles.editorArea}>
           <Editor onReady={handleEditorReady} />
         </div>
