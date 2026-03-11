@@ -162,8 +162,8 @@ export default function Editor({ onReady }) {
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
+          target: null,
           rel: 'noopener noreferrer',
-          target: '_blank',
         },
       }),
       Underline,
@@ -191,6 +191,13 @@ export default function Editor({ onReady }) {
       },
       handleDOMEvents: {
         mousedown: (view, event) => {
+          if (event.target.closest?.('a')) {
+            event.preventDefault()
+            return true
+          }
+          return false
+        },
+        click: (view, event) => {
           const anchor = event.target.closest?.('a')
           if (!anchor) return false
           event.preventDefault()
