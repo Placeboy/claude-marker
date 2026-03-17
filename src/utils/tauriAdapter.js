@@ -35,7 +35,7 @@ export async function saveTextFile(content, defaultName, mimeType = 'text/plain'
       const { save } = await import('@tauri-apps/plugin-dialog')
       const filePath = await save({
         defaultPath: defaultName,
-        filters: [{ name: 'All Files', extensions: ['*'] }],
+        filters: [{ name: 'Markdown', extensions: ['md', 'markdown'] }, { name: 'All Files', extensions: ['*'] }],
       })
       if (filePath) {
         await writeTextFile(filePath, content)
