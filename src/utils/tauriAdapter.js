@@ -132,6 +132,16 @@ export async function openDirectoryDialog() {
   }
 }
 
+export async function readBinaryFile(path) {
+  if (!path || !isTauri()) return null
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    return await invoke('read_binary_file', { path })
+  } catch {
+    return null
+  }
+}
+
 export async function readTextFile(path) {
   if (!path) return ''
 

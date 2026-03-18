@@ -1,3 +1,4 @@
+use base64::Engine as _;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -33,6 +34,12 @@ fn export_pdf_preview(html: String) -> Result<(), String> {
 #[tauri::command]
 fn read_text_file(path: String) -> Result<String, String> {
     fs::read_to_string(path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn read_binary_file(path: String) -> Result<String, String> {
+    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(&bytes))
 }
 
 #[tauri::command]
@@ -242,6 +249,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             export_pdf_preview,
             read_text_file,
+            read_binary_file,
             write_text_file,
             move_file,
             scan_markdown_directory

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { dehydrateImageRefs, resolveImageRefs, revokeAllUrls, getAllImageIds, deleteImage } from '../utils/imageStore.js'
+import { dehydrateImageRefs, resolveImageRefs, revokeAllUrls, getAllImageIds, deleteImage, saveImage, getImageUrl } from '../utils/imageStore.js'
 import { editorToMarkdown, markdownToHtml } from '../utils/markdown.js'
 import {
   isTauri,
@@ -7,6 +7,7 @@ import {
   onAppClose,
   openDirectoryDialog,
   openTextFileDialog,
+  readBinaryFile,
   readTextFile,
   saveTextFile,
   scanDirectory,
@@ -245,6 +246,65 @@ async function cleanupOrphanImages(docs) {
   }
 }
 
+function dirname(path) {
+  const i = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
+  return i >= 0 ? path.slice(0, i) : '.'
+}
+
+function isRemoteUrl(src) {
+  return /^(https?:|blob:|data:|img:)/i.test(src)
+}
+
+async function resolveLocalImages(editor, docPath) {
+  if (!editor || !docPath || !isTauri()) return
+  const dir = dirname(docPath)
+  const updates = []
+
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name !== 'image') return
+    const src = node.attrs.src
+    if (!src || isRemoteUrl(src)) return
+    updates.push({ pos, src })
+  })
+
+  if (updates.length === 0) return
+
+  for (const { pos, src } of updates) {
+    const absolute = src.startsWith('/') || /^[A-Z]:\\/i.test(src)
+      ? src
+      : dir + '/' + src.replace(/^\.\//, '')
+    const base64 = await readBinaryFile(absolute)
+    if (!base64) continue
+
+    const ext = absolute.split('.').pop()?.toLowerCase() || 'png'
+    const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+      : ext === 'gif' ? 'image/gif'
+      : ext === 'webp' ? 'image/webp'
+      : ext === 'svg' ? 'image/svg+xml'
+      : 'image/png'
+
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], { type: mime })
+
+    const imageId = await saveImage(blob)
+    const blobUrl = await getImageUrl(imageId)
+
+    const { tr } = editor.state
+    const currentNode = tr.doc.nodeAt(pos)
+    if (currentNode?.type.name === 'image') {
+      tr.setNodeMarkup(pos, undefined, {
+        ...currentNode.attrs,
+        src: blobUrl,
+        'data-image-id': imageId,
+        'data-original-src': src,
+      })
+      editor.view.dispatch(tr)
+    }
+  }
+}
+
 export default function useDocuments(editor, { hashDocId, setHash, replaceHash } = {}) {
   const [state, setState] = useState(() => initState(hashDocId))
   const [lastSaved, setLastSaved] = useState(null)
@@ -275,6 +335,7 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     if (doc.source === 'file') {
       const text = await readTextFile(doc.path)
       ed.commands.setContent(markdownToHtml(text || ''))
+      await resolveLocalImages(ed, doc.path)
       return
     }
 
@@ -512,7 +573,10 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     }))
     localStorage.setItem(CURRENT_KEY, doc.id)
     const ed = editorRef.current
-    if (ed) ed.commands.setContent(markdownToHtml(file.content || ''))
+    if (ed) {
+      ed.commands.setContent(markdownToHtml(file.content || ''))
+      await resolveLocalImages(ed, file.path)
+    }
     if (setHash) setHash(doc.id)
     return doc.id
   }, [flush, setHash, switchDoc])

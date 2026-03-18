@@ -14,6 +14,14 @@ const ImageExtension = Image.extend({
           return { 'data-image-id': attributes['data-image-id'] }
         },
       },
+      'data-original-src': {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-original-src'),
+        renderHTML: (attributes) => {
+          if (!attributes['data-original-src']) return {}
+          return { 'data-original-src': attributes['data-original-src'] }
+        },
+      },
       width: {
         default: null,
         parseHTML: (element) => {

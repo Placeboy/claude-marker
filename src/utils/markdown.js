@@ -1,7 +1,6 @@
 import TurndownService from 'turndown'
 
-export function editorToMarkdown(editor) {
-  const html = editor.getHTML()
+export function createTurndownService() {
   const td = new TurndownService({
     headingStyle: 'atx',
     codeBlockStyle: 'fenced',
@@ -33,13 +32,20 @@ export function editorToMarkdown(editor) {
     filter: 'img',
     replacement: (content, node) => {
       const alt = node.getAttribute('alt') || ''
+      const originalSrc = node.getAttribute('data-original-src')
+      if (originalSrc) return `![${alt}](${originalSrc})`
       const imageId = node.getAttribute('data-image-id')
       const src = imageId ? `img://${imageId}` : (node.getAttribute('src') || '')
       return `![${alt}](${src})`
     },
   })
 
-  return td.turndown(html)
+  return td
+}
+
+export function editorToMarkdown(editor) {
+  const html = editor.getHTML()
+  return createTurndownService().turndown(html)
 }
 
 export function markdownToHtml(md) {
