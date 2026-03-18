@@ -310,6 +310,7 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
   const [lastSaved, setLastSaved] = useState(null)
   const timerRef = useRef(null)
   const selfWriteRef = useRef(false)
+  const lastFileContentRef = useRef(null)
   const editorRef = useRef(editor)
   const stateRef = useRef(state)
 
@@ -336,6 +337,7 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
       const text = await readTextFile(doc.path)
       ed.commands.setContent(markdownToHtml(text || ''))
       await resolveLocalImages(ed, doc.path)
+      lastFileContentRef.current = editorToMarkdown(ed)
       return
     }
 
@@ -359,6 +361,8 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
 
     if (doc.source === 'file') {
       const markdown = editorToMarkdown(ed)
+      if (markdown === lastFileContentRef.current) return
+      lastFileContentRef.current = markdown
       selfWriteRef.current = true
       await writeTextFile(doc.path, markdown)
       setTimeout(() => { selfWriteRef.current = false }, 1500)
@@ -576,6 +580,7 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
     if (ed) {
       ed.commands.setContent(markdownToHtml(file.content || ''))
       await resolveLocalImages(ed, file.path)
+      lastFileContentRef.current = editorToMarkdown(ed)
     }
     if (setHash) setHash(doc.id)
     return doc.id

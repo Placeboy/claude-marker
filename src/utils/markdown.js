@@ -4,6 +4,21 @@ export function createTurndownService() {
   const td = new TurndownService({
     headingStyle: 'atx',
     codeBlockStyle: 'fenced',
+    hr: '---',
+    emDelimiter: '*',
+    bulletListMarker: '-',
+  })
+
+  td.addRule('listItemCompact', {
+    filter: (node) => node.nodeName === 'LI' && node.parentNode?.getAttribute('data-type') !== 'taskList',
+    replacement: (content, node, options) => {
+      const cleaned = content.replace(/^\n+/, '').replace(/\n+$/, '')
+      const isOrdered = node.parentNode?.nodeName === 'OL'
+      const prefix = isOrdered
+        ? (Array.from(node.parentNode.children).indexOf(node) + 1) + '. '
+        : options.bulletListMarker + ' '
+      return prefix + cleaned.replace(/\n/g, '\n  ') + '\n'
+    },
   })
 
   td.addRule('taskList', {
