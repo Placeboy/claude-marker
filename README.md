@@ -14,6 +14,8 @@ A lightweight, Notion-style Markdown editor built with React and TipTap. Runs as
 - **WYSIWYG Editing** — Rich text editing powered by TipTap (ProseMirror)
 - **Markdown Shortcuts** — Type `# ` for headings, `- ` for lists, `> ` for quotes, ``` for code blocks
 - **Search & Replace** — Cmd/Ctrl+F to find, Cmd/Ctrl+H to find & replace, with match highlighting and case-sensitive toggle
+- **Markdown Source Edit** — Double-click any block to edit its raw Markdown inline, then blur or press Escape to apply
+- **Local Image Support** — Relative image paths in markdown files are resolved and displayed automatically (Tauri desktop)
 - **Keyboard Shortcuts** — Cmd/Ctrl+B (bold), Cmd/Ctrl+I (italic), Cmd/Ctrl+U (underline), Cmd/Ctrl+Shift+S (strikethrough), Cmd/Ctrl+E (inline code), Cmd/Ctrl+Shift+H (highlight), Cmd/Ctrl+K (link)
 - **Slash Commands** — Type `/` to open a command menu for inserting headings, lists, quotes, code blocks, dividers, and task lists
 - **Table of Contents** — Auto-generated sidebar TOC from H1–H3 headings with click-to-scroll and active heading highlight
@@ -117,7 +119,10 @@ src/
 │   ├── TabBar/                # Document tabs
 │   └── SlashMenu/             # Slash command popup menu
 ├── extensions/
-│   └── SlashCommand.jsx       # TipTap slash command extension
+│   ├── SlashCommand.jsx       # TipTap slash command extension
+│   ├── ImageExtension.jsx     # Image node with local-path support
+│   ├── SearchReplace.jsx      # Find & replace with highlights
+│   └── MarkdownSourceEdit.jsx # Double-click inline source editing
 ├── hooks/
 │   ├── useAutoSave.js         # Auto-save to localStorage
 │   ├── useDocuments.js        # Multi-source document management

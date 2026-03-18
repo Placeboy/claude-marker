@@ -14,6 +14,8 @@
 - **所见即所得编辑** — 基于 TipTap (ProseMirror) 的富文本编辑
 - **Markdown 快捷输入** — 输入 `# ` 转为标题、`- ` 转为列表、`> ` 转为引用、``` 转为代码块
 - **搜索替换** — Cmd/Ctrl+F 查找，Cmd/Ctrl+H 查找并替换，支持匹配高亮和区分大小写
+- **Markdown 源码编辑** — 双击任意块即可内联编辑其原始 Markdown，失焦或按 Escape 应用更改
+- **本地图片支持** — 自动解析并显示 Markdown 文件中的相对路径图片（Tauri 桌面版）
 - **键盘快捷键** — Cmd/Ctrl+B（加粗）、Cmd/Ctrl+I（斜体）、Cmd/Ctrl+U（下划线）、Cmd/Ctrl+Shift+S（删除线）、Cmd/Ctrl+E（行内代码）、Cmd/Ctrl+Shift+H（高亮）、Cmd/Ctrl+K（链接）
 - **斜杠命令** — 输入 `/` 打开命令菜单，可插入标题、列表、引用、代码块、分割线、待办列表
 - **侧边目录** — 自动从 H1–H3 标题生成目录，点击跳转，当前位置高亮
@@ -117,7 +119,10 @@ src/
 │   ├── TabBar/                # 文档标签页
 │   └── SlashMenu/             # 斜杠命令弹出菜单
 ├── extensions/
-│   └── SlashCommand.jsx       # TipTap 斜杠命令扩展
+│   ├── SlashCommand.jsx       # TipTap 斜杠命令扩展
+│   ├── ImageExtension.jsx     # 图片节点（支持本地路径）
+│   ├── SearchReplace.jsx      # 搜索替换与高亮
+│   └── MarkdownSourceEdit.jsx # 双击内联源码编辑
 ├── hooks/
 │   ├── useAutoSave.js         # 自动保存到 localStorage
 │   ├── useDocuments.js        # 多来源文档管理
