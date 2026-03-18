@@ -13,6 +13,7 @@ import { common, createLowlight } from 'lowlight'
 import SlashCommand from '../../extensions/SlashCommand.jsx'
 import ImageExtension from '../../extensions/ImageExtension.jsx'
 import BookmarkExtension from '../../extensions/BookmarkExtension.jsx'
+import SearchReplace from '../../extensions/SearchReplace.jsx'
 import { saveImage, getImageUrl } from '../../utils/imageStore.js'
 import LinkPopup from '../LinkPopup/LinkPopup.jsx'
 import PasteBookmarkPopup from '../PasteBookmarkPopup/PasteBookmarkPopup.jsx'
@@ -183,6 +184,7 @@ export default function Editor({ onReady }) {
         allowBase64: true,
       }),
       BookmarkExtension,
+      SearchReplace,
     ],
     content: { type: 'doc', content: [{ type: 'paragraph' }] },
     editorProps: {

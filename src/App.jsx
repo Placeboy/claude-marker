@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar/Sidebar'
 import TabBar from './components/TabBar/TabBar'
 import Toolbar from './components/Toolbar/Toolbar'
 import Editor from './components/Editor/Editor'
+import SearchBar from './components/SearchBar/SearchBar'
 import useToc from './hooks/useToc'
 import useDocuments from './hooks/useDocuments'
 import useHashRouter from './hooks/useHashRouter'
@@ -15,6 +16,8 @@ const NATIVE_MENU_EVENT = 'native-menu-action'
 export default function App() {
   const [editor, setEditor] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [searchBarVisible, setSearchBarVisible] = useState(false)
+  const [showReplace, setShowReplace] = useState(false)
   const menuActionsRef = useRef({
     openFileDialog: async () => {},
     openDirectory: async () => {},
@@ -133,6 +136,32 @@ export default function App() {
     editor.setEditable(!currentDocDeleted)
   }, [editor, currentDocDeleted])
 
+  // Cmd+F / Cmd+H keyboard shortcuts for search/replace
+  useEffect(() => {
+    const handleSearchShortcut = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setSearchBarVisible(true)
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h') {
+        e.preventDefault()
+        setSearchBarVisible(true)
+        setShowReplace(true)
+      }
+    }
+    document.addEventListener('keydown', handleSearchShortcut)
+    return () => document.removeEventListener('keydown', handleSearchShortcut)
+  }, [])
+
+  const handleCloseSearch = useCallback(() => {
+    setSearchBarVisible(false)
+    editor?.commands.focus()
+  }, [editor])
+
+  const handleToggleReplace = useCallback(() => {
+    setShowReplace((v) => !v)
+  }, [])
+
   return (
     <div className={styles.container}>
       <Sidebar
@@ -167,6 +196,13 @@ export default function App() {
           <div className={styles.deletedBanner}>This file has been deleted from disk.</div>
         )}
         <div className={styles.editorArea}>
+          <SearchBar
+            editor={editor}
+            visible={searchBarVisible}
+            showReplace={showReplace}
+            onClose={handleCloseSearch}
+            onToggleReplace={handleToggleReplace}
+          />
           <Editor onReady={handleEditorReady} />
         </div>
       </div>

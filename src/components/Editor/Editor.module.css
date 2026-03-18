@@ -323,3 +323,14 @@
 .editor :global(.hljs-built_in) {
   color: #e36209;
 }
+
+/* Search & Replace highlights */
+.editor :global(.search-highlight) {
+  background: #fef08a;
+  border-radius: 2px;
+}
+
+.editor :global(.search-highlight-current) {
+  background: #fb923c;
+  border-radius: 2px;
+}

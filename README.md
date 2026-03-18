@@ -13,6 +13,7 @@ A lightweight, Notion-style Markdown editor built with React and TipTap. Runs as
 
 - **WYSIWYG Editing** — Rich text editing powered by TipTap (ProseMirror)
 - **Markdown Shortcuts** — Type `# ` for headings, `- ` for lists, `> ` for quotes, ``` for code blocks
+- **Search & Replace** — Cmd/Ctrl+F to find, Cmd/Ctrl+H to find & replace, with match highlighting and case-sensitive toggle
 - **Keyboard Shortcuts** — Cmd/Ctrl+B (bold), Cmd/Ctrl+I (italic), Cmd/Ctrl+U (underline), Cmd/Ctrl+Shift+S (strikethrough), Cmd/Ctrl+E (inline code), Cmd/Ctrl+Shift+H (highlight), Cmd/Ctrl+K (link)
 - **Slash Commands** — Type `/` to open a command menu for inserting headings, lists, quotes, code blocks, dividers, and task lists
 - **Table of Contents** — Auto-generated sidebar TOC from H1–H3 headings with click-to-scroll and active heading highlight
@@ -85,6 +86,8 @@ npm run tauri:build
 | `Cmd/Ctrl + E` | Inline code |
 | `Cmd/Ctrl + Shift + H` | Highlight |
 | `Cmd/Ctrl + K` | Insert link |
+| `Cmd/Ctrl + F` | Find |
+| `Cmd/Ctrl + H` | Find & Replace |
 | `Tab / Shift+Tab` | Indent / outdent list |
 | `/` | Open slash command menu |
 

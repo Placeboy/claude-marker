@@ -13,6 +13,7 @@
 
 - **所见即所得编辑** — 基于 TipTap (ProseMirror) 的富文本编辑
 - **Markdown 快捷输入** — 输入 `# ` 转为标题、`- ` 转为列表、`> ` 转为引用、``` 转为代码块
+- **搜索替换** — Cmd/Ctrl+F 查找，Cmd/Ctrl+H 查找并替换，支持匹配高亮和区分大小写
 - **键盘快捷键** — Cmd/Ctrl+B（加粗）、Cmd/Ctrl+I（斜体）、Cmd/Ctrl+U（下划线）、Cmd/Ctrl+Shift+S（删除线）、Cmd/Ctrl+E（行内代码）、Cmd/Ctrl+Shift+H（高亮）、Cmd/Ctrl+K（链接）
 - **斜杠命令** — 输入 `/` 打开命令菜单，可插入标题、列表、引用、代码块、分割线、待办列表
 - **侧边目录** — 自动从 H1–H3 标题生成目录，点击跳转，当前位置高亮
@@ -85,6 +86,8 @@ npm run tauri:build
 | `Cmd/Ctrl + E` | 行内代码 |
 | `Cmd/Ctrl + Shift + H` | 高亮 |
 | `Cmd/Ctrl + K` | 插入链接 |
+| `Cmd/Ctrl + F` | 查找 |
+| `Cmd/Ctrl + H` | 查找并替换 |
 | `Tab / Shift+Tab` | 列表缩进 / 取消缩进 |
 | `/` | 打开斜杠命令菜单 |
 
