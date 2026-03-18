@@ -14,6 +14,7 @@ import SlashCommand from '../../extensions/SlashCommand.jsx'
 import ImageExtension from '../../extensions/ImageExtension.jsx'
 import BookmarkExtension from '../../extensions/BookmarkExtension.jsx'
 import SearchReplace from '../../extensions/SearchReplace.jsx'
+import MarkdownSourceEdit from '../../extensions/MarkdownSourceEdit.jsx'
 import { saveImage, getImageUrl } from '../../utils/imageStore.js'
 import LinkPopup from '../LinkPopup/LinkPopup.jsx'
 import PasteBookmarkPopup from '../PasteBookmarkPopup/PasteBookmarkPopup.jsx'
@@ -185,6 +186,7 @@ export default function Editor({ onReady }) {
       }),
       BookmarkExtension,
       SearchReplace,
+      MarkdownSourceEdit,
     ],
     content: { type: 'doc', content: [{ type: 'paragraph' }] },
     editorProps: {

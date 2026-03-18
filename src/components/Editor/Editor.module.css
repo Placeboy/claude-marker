@@ -324,6 +324,27 @@
   color: #e36209;
 }
 
+/* Markdown source edit overlay */
+.editor :global(.markdown-source-edit-wrapper) {
+  position: absolute;
+  z-index: 10;
+}
+
+.editor :global(.markdown-source-edit) {
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-bg-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  line-height: 1.6;
+  color: var(--color-text);
+  resize: none;
+  outline: none;
+  overflow: hidden;
+}
+
 /* Search & Replace highlights */
 .editor :global(.search-highlight) {
   background: #fef08a;
