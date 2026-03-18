@@ -58,7 +58,7 @@
   padding: 0.15em 0.35em;
   font-family: var(--font-mono);
   font-size: 0.9em;
-  color: #e11d48;
+  color: var(--color-code-text);
 }
 
 .editor :global(.tiptap mark) {
@@ -297,31 +297,31 @@
 /* highlight.js theme overrides for light */
 .editor :global(.hljs-comment),
 .editor :global(.hljs-quote) {
-  color: #6a737d;
+  color: var(--color-hljs-comment);
 }
 
 .editor :global(.hljs-keyword),
 .editor :global(.hljs-selector-tag) {
-  color: #d73a49;
+  color: var(--color-hljs-keyword);
 }
 
 .editor :global(.hljs-string),
 .editor :global(.hljs-attr) {
-  color: #032f62;
+  color: var(--color-hljs-string);
 }
 
 .editor :global(.hljs-number),
 .editor :global(.hljs-literal) {
-  color: #005cc5;
+  color: var(--color-hljs-number);
 }
 
 .editor :global(.hljs-function),
 .editor :global(.hljs-title) {
-  color: #6f42c1;
+  color: var(--color-hljs-function);
 }
 
 .editor :global(.hljs-built_in) {
-  color: #e36209;
+  color: var(--color-hljs-builtin);
 }
 
 /* Markdown source edit overlay */
@@ -347,11 +347,11 @@
 
 /* Search & Replace highlights */
 .editor :global(.search-highlight) {
-  background: #fef08a;
+  background: var(--color-highlight);
   border-radius: 2px;
 }
 
 .editor :global(.search-highlight-current) {
-  background: #fb923c;
+  background: var(--color-highlight-current);
   border-radius: 2px;
 }

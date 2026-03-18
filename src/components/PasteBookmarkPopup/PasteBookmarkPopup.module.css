@@ -37,12 +37,12 @@
 
 .btnAccent {
   composes: btn;
-  background: var(--color-primary, #2563eb);
-  border-color: var(--color-primary, #2563eb);
-  color: #fff;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
 }
 
 .btnAccent:hover {
   opacity: 0.9;
-  background: var(--color-primary, #2563eb);
+  background: var(--color-accent);
 }

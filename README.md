@@ -22,6 +22,7 @@ A lightweight, Notion-style Markdown editor built with React and TipTap. Runs as
 - **Auto Save** — Content is automatically saved to localStorage
 - **Import / Export** — Import and export `.md` files
 - **Syntax Highlighting** — Code blocks with highlight.js support
+- **Dark Mode** — Light / dark / system theme toggle in the toolbar, persisted across sessions
 - **Clean UI** — Minimal design with a centered 720px editor area, collapsible sidebar
 
 ## Build from Source

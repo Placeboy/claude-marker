@@ -18,6 +18,10 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [searchBarVisible, setSearchBarVisible] = useState(false)
   const [showReplace, setShowReplace] = useState(false)
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('markdown-editor-theme')
+    return saved || 'system'
+  })
   const menuActionsRef = useRef({
     openFileDialog: async () => {},
     openDirectory: async () => {},
@@ -50,6 +54,28 @@ export default function App() {
     moveItem,
     renameDoc,
   } = useDocuments(editor, { hashDocId, setHash, replaceHash })
+
+  useEffect(() => {
+    const resolved = theme === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : theme
+    document.documentElement.setAttribute('data-theme', resolved)
+
+    if (theme === 'system') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)')
+      const handler = (e) => document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light')
+      mq.addEventListener('change', handler)
+      return () => mq.removeEventListener('change', handler)
+    }
+  }, [theme])
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => {
+      const next = prev === 'light' ? 'dark' : prev === 'dark' ? 'system' : 'light'
+      localStorage.setItem('markdown-editor-theme', next)
+      return next
+    })
+  }, [])
 
   const handleEditorReady = useCallback((editorInstance) => {
     setEditor(editorInstance)
@@ -191,6 +217,8 @@ export default function App() {
         />
         <Toolbar
           editor={editor}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
         {currentDocDeleted && (
           <div className={styles.deletedBanner}>This file has been deleted from disk.</div>

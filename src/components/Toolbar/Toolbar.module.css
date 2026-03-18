@@ -15,6 +15,12 @@
   gap: 4px;
 }
 
+.right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
 .group {
   display: flex;
   align-items: center;
