@@ -89,6 +89,14 @@ export const slashItems = [
     },
   },
   {
+    title: 'Table',
+    description: 'Insert a table',
+    icon: '⊞',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+    },
+  },
+  {
     title: 'Bookmark',
     description: 'Embed a link as a card',
     icon: '🔖',

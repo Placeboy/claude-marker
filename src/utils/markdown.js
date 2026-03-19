@@ -29,6 +29,40 @@ export function createTurndownService() {
     },
   })
 
+  td.addRule('tableCell', {
+    filter: ['th', 'td'],
+    replacement: (content, node) => {
+      const siblings = Array.from(node.parentNode.children).filter(n => n.nodeName === 'TH' || n.nodeName === 'TD')
+      const isFirst = siblings.indexOf(node) === 0
+      const isLast = siblings.indexOf(node) === siblings.length - 1
+      const cell = content.trim().replace(/\n+/g, ' ').replace(/\|/g, '\\|')
+      return (isFirst ? '| ' : ' ') + cell + (isLast ? ' |' : ' |')
+    },
+  })
+
+  td.addRule('tableRow', {
+    filter: 'tr',
+    replacement: (content, node) => {
+      const hasTh = node.querySelector('th') !== null
+      if (hasTh) {
+        const colCount = node.querySelectorAll('th, td').length
+        const sep = '| ' + Array(colCount).fill('---').join(' | ') + ' |'
+        return '\n' + content + '\n' + sep
+      }
+      return '\n' + content
+    },
+  })
+
+  td.addRule('tableSection', {
+    filter: ['thead', 'tbody', 'tfoot'],
+    replacement: (content) => content,
+  })
+
+  td.addRule('table', {
+    filter: 'table',
+    replacement: (content) => '\n\n' + content.replace(/^\n/, '').trimEnd() + '\n\n',
+  })
+
   td.addRule('highlight', {
     filter: 'mark',
     replacement: (content) => `==${content}==`,
@@ -80,6 +114,24 @@ export function markdownToHtml(md) {
     .replace(/==(.+?)==/g, '<mark>$1</mark>')
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
+
+  // GFM tables — must run after inline formatting so cell content is already converted
+  processed = processed.replace(
+    /^(\|.+\|[ \t]*)\n(\|[ \t]*[-: |]+[-: |]*[ \t]*)\n((?:\|.+\|[ \t]*\n?)+)/gm,
+    (_, headerLine, _sep, bodyLines) => {
+      const parseRow = (line) =>
+        line.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim())
+      const headers = parseRow(headerLine)
+      const rows = bodyLines.trim().split('\n').filter((l) => l.trim()).map(parseRow)
+      const colCount = headers.length
+      const thead = `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join('')}</tr></thead>`
+      const tbody = `<tbody>${rows.map((r) => {
+        while (r.length < colCount) r.push('')
+        return `<tr>${r.slice(0, colCount).map((c) => `<td>${c}</td>`).join('')}</tr>`
+      }).join('')}</tbody>`
+      return `<table>${thead}${tbody}</table>`
+    }
+  )
 
   processed = processed
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')

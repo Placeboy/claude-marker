@@ -17,7 +17,8 @@ A lightweight, Notion-style Markdown editor built with React and TipTap. Runs as
 - **Markdown Source Edit** — Double-click any block to edit its raw Markdown inline, then blur or press Escape to apply
 - **Local Image Support** — Relative image paths in markdown files are resolved and displayed automatically (Tauri desktop)
 - **Keyboard Shortcuts** — Cmd/Ctrl+B (bold), Cmd/Ctrl+I (italic), Cmd/Ctrl+U (underline), Cmd/Ctrl+Shift+S (strikethrough), Cmd/Ctrl+E (inline code), Cmd/Ctrl+Shift+H (highlight), Cmd/Ctrl+K (link)
-- **Slash Commands** — Type `/` to open a command menu for inserting headings, lists, quotes, code blocks, dividers, and task lists
+- **Tables** — Insert tables via `/table` slash command; Tab/Shift+Tab to navigate cells, Alt+Shift+Arrow to add rows/columns, floating toolbar for row/column operations; GFM table import/export
+- **Slash Commands** — Type `/` to open a command menu for inserting headings, lists, quotes, code blocks, tables, dividers, and task lists
 - **Table of Contents** — Auto-generated sidebar TOC from H1–H3 headings with click-to-scroll and active heading highlight
 - **Auto Save** — Content is automatically saved to localStorage
 - **Import / Export** — Import and export `.md` files
@@ -91,7 +92,9 @@ npm run tauri:build
 | `Cmd/Ctrl + K` | Insert link |
 | `Cmd/Ctrl + F` | Find |
 | `Cmd/Ctrl + H` | Find & Replace |
-| `Tab / Shift+Tab` | Indent / outdent list |
+| `Tab / Shift+Tab` | Indent / outdent list; navigate table cells |
+| `Alt+Shift+↑ / ↓` | Add table row above / below |
+| `Alt+Shift+← / →` | Add table column left / right |
 | `/` | Open slash command menu |
 
 ## Markdown Input Shortcuts
@@ -118,6 +121,7 @@ src/
 │   ├── Toolbar/               # Format buttons
 │   ├── Sidebar/               # Table of contents + file tree
 │   ├── TabBar/                # Document tabs
+│   ├── TableMenu/             # Floating table operations toolbar
 │   └── SlashMenu/             # Slash command popup menu
 ├── extensions/
 │   ├── SlashCommand.jsx       # TipTap slash command extension

@@ -17,7 +17,8 @@
 - **Markdown 源码编辑** — 双击任意块即可内联编辑其原始 Markdown，失焦或按 Escape 应用更改
 - **本地图片支持** — 自动解析并显示 Markdown 文件中的相对路径图片（Tauri 桌面版）
 - **键盘快捷键** — Cmd/Ctrl+B（加粗）、Cmd/Ctrl+I（斜体）、Cmd/Ctrl+U（下划线）、Cmd/Ctrl+Shift+S（删除线）、Cmd/Ctrl+E（行内代码）、Cmd/Ctrl+Shift+H（高亮）、Cmd/Ctrl+K（链接）
-- **斜杠命令** — 输入 `/` 打开命令菜单，可插入标题、列表、引用、代码块、分割线、待办列表
+- **表格** — 通过 `/table` 斜杠命令插入表格；Tab/Shift+Tab 在单元格间导航，Alt+Shift+方向键添加行/列，浮动工具栏支持行列插入和删除；支持 GFM 表格导入/导出
+- **斜杠命令** — 输入 `/` 打开命令菜单，可插入标题、列表、引用、代码块、表格、分割线、待办列表
 - **侧边目录** — 自动从 H1–H3 标题生成目录，点击跳转，当前位置高亮
 - **自动保存** — 内容自动保存到 localStorage
 - **导入 / 导出** — 支持导入和导出 `.md` 文件
@@ -91,7 +92,9 @@ npm run tauri:build
 | `Cmd/Ctrl + K` | 插入链接 |
 | `Cmd/Ctrl + F` | 查找 |
 | `Cmd/Ctrl + H` | 查找并替换 |
-| `Tab / Shift+Tab` | 列表缩进 / 取消缩进 |
+| `Tab / Shift+Tab` | 列表缩进 / 取消缩进；表格单元格导航 |
+| `Alt+Shift+↑ / ↓` | 在当前行上方 / 下方插入行 |
+| `Alt+Shift+← / →` | 在当前列左侧 / 右侧插入列 |
 | `/` | 打开斜杠命令菜单 |
 
 ## Markdown 输入快捷方式
@@ -118,6 +121,7 @@ src/
 │   ├── Toolbar/               # 格式化按钮
 │   ├── Sidebar/               # 侧边目录 + 文件树
 │   ├── TabBar/                # 文档标签页
+│   ├── TableMenu/             # 浮动表格操作工具栏
 │   └── SlashMenu/             # 斜杠命令弹出菜单
 ├── extensions/
 │   ├── SlashCommand.jsx       # TipTap 斜杠命令扩展

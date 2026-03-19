@@ -1,0 +1,46 @@
+.menu {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  box-shadow: var(--shadow-md);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.75em;
+  font-family: var(--font-sans);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+
+.btn:hover {
+  background: var(--color-bg-hover);
+}
+
+.btn:active {
+  background: var(--color-bg-active);
+}
+
+.danger:hover {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.divider {
+  width: 1px;
+  height: 18px;
+  background: var(--color-border);
+  margin: 0 2px;
+}

@@ -10,6 +10,7 @@ import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
+import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table'
 import SlashCommand from '../../extensions/SlashCommand.jsx'
 import ImageExtension from '../../extensions/ImageExtension.jsx'
 import BookmarkExtension from '../../extensions/BookmarkExtension.jsx'
@@ -19,6 +20,7 @@ import { saveImage, getImageUrl } from '../../utils/imageStore.js'
 import LinkPopup from '../LinkPopup/LinkPopup.jsx'
 import PasteBookmarkPopup from '../PasteBookmarkPopup/PasteBookmarkPopup.jsx'
 import ImageLightbox from '../ImageLightbox/ImageLightbox.jsx'
+import TableMenu from '../TableMenu/TableMenu.jsx'
 import styles from './Editor.module.css'
 
 const lowlight = createLowlight(common)
@@ -179,6 +181,10 @@ export default function Editor({ onReady }) {
       CodeBlockLowlight.configure({
         lowlight,
       }),
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
       SlashCommand,
       ImageExtension.configure({
         inline: false,
@@ -283,6 +289,13 @@ export default function Editor({ onReady }) {
           e.preventDefault()
           editor.chain().focus().toggleHighlight().run()
         }
+        // Table shortcuts (Alt+Shift+Arrow)
+        if (e.altKey && e.shiftKey && editor.isActive('table')) {
+          if (e.key === 'ArrowUp') { e.preventDefault(); editor.chain().focus().addRowBefore().run() }
+          if (e.key === 'ArrowDown') { e.preventDefault(); editor.chain().focus().addRowAfter().run() }
+          if (e.key === 'ArrowLeft') { e.preventDefault(); editor.chain().focus().addColumnBefore().run() }
+          if (e.key === 'ArrowRight') { e.preventDefault(); editor.chain().focus().addColumnAfter().run() }
+        }
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
           e.preventDefault()
           const previousUrl = editor.getAttributes('link').href
@@ -336,6 +349,7 @@ export default function Editor({ onReady }) {
   return (
     <div className={styles.editor}>
       <EditorContent editor={editor} />
+      <TableMenu editor={editor} />
       <LinkPopup editor={editor} />
       {pastePopup && (
         <PasteBookmarkPopup
