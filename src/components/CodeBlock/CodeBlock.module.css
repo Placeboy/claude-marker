@@ -1,0 +1,55 @@
+.codeBlockWrapper {
+  position: relative;
+  margin: 0.8em 0;
+}
+
+.codeBlockWrapper pre {
+  background: var(--color-code-bg);
+  border-radius: var(--radius-md);
+  padding: 2.2em 1em 1em;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.codeBlockWrapper pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  border-radius: 0;
+}
+
+.codeBlockHeader {
+  position: absolute;
+  top: 0.4em;
+  right: 0.5em;
+  z-index: 1;
+}
+
+.languageSelect {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.languageSelect:hover,
+.languageSelect:focus {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.languageSelect option {
+  background: var(--color-bg);
+  color: var(--color-text);
+}

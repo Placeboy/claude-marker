@@ -129,25 +129,7 @@
   color: var(--color-text-secondary);
 }
 
-/* Code block */
-.editor :global(.tiptap pre) {
-  background: var(--color-code-bg);
-  border-radius: var(--radius-md);
-  padding: 1em;
-  margin: 0.8em 0;
-  overflow-x: auto;
-  font-family: var(--font-mono);
-  font-size: 0.875em;
-  line-height: 1.5;
-}
-
-.editor :global(.tiptap pre code) {
-  background: none;
-  padding: 0;
-  color: inherit;
-  font-size: inherit;
-  border-radius: 0;
-}
+/* Code block — styles are in CodeBlock.module.css */
 
 /* Images — resizable wrapper */
 .editor :global(.tiptap .image-resizable) {
@@ -345,14 +327,19 @@
   overflow: hidden;
 }
 
-/* Table */
+/* Table — wrapper provides outer border & radius */
+.editor :global(.tiptap .tableWrapper) {
+  overflow-x: auto;
+  margin: 0.8em 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
 .editor :global(.tiptap table) {
   border-collapse: collapse;
+  table-layout: fixed;
   width: 100%;
-  margin: 0.8em 0;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  margin: 0;
 }
 
 .editor :global(.tiptap table th),
@@ -360,8 +347,9 @@
   border: 1px solid var(--color-border);
   padding: 0.4em 0.75em;
   vertical-align: top;
-  min-width: 60px;
+  min-width: 40px;
   position: relative;
+  box-sizing: border-box;
 }
 
 .editor :global(.tiptap table th) {
@@ -371,16 +359,118 @@
   color: var(--color-text-secondary);
 }
 
-.editor :global(.tiptap table tr:hover td) {
+.editor :global(.tiptap table tr:hover > td) {
   background: var(--color-bg-secondary);
 }
 
 .editor :global(.tiptap table .selectedCell) {
-  background: var(--color-accent-light);
+  background: var(--color-accent-light) !important;
 }
 
 .editor :global(.tiptap table p) {
   margin: 0;
+}
+
+/* Column resize handle */
+.editor :global(.column-resize-handle) {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background-color: var(--color-accent);
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.5;
+}
+
+.editor :global(.resize-cursor) {
+  cursor: col-resize;
+}
+
+/* Math — inline */
+.editor :global(.math-inline) {
+  display: inline;
+  cursor: pointer;
+  padding: 1px 3px;
+  border-radius: var(--radius-sm);
+  transition: background 0.1s;
+}
+
+.editor :global(.math-inline:hover) {
+  background: var(--color-bg-hover);
+}
+
+.editor :global(.math-inline-editing) {
+  display: inline;
+  align-items: center;
+}
+
+.editor :global(.math-delim) {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--color-text-tertiary);
+  user-select: none;
+}
+
+.editor :global(.math-input) {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  outline: none;
+  color: var(--color-text);
+  min-width: 60px;
+}
+
+/* Math — block */
+.editor :global(.math-block) {
+  display: block;
+  text-align: center;
+  padding: 1em 1.5em;
+  margin: 0.8em 0;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  overflow-x: auto;
+  transition: background 0.1s;
+}
+
+.editor :global(.math-block:hover) {
+  background: var(--color-bg-hover);
+}
+
+.editor :global(.math-block-editing) {
+  display: block;
+  padding: 0.75em 1em;
+  margin: 0.8em 0;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-accent);
+}
+
+.editor :global(.math-delim-hint) {
+  font-size: 0.7em;
+  margin-top: 4px;
+  opacity: 0.7;
+}
+
+.editor :global(.math-textarea) {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  color: var(--color-text);
+  line-height: 1.6;
+  min-height: 2em;
+  display: block;
+  padding: 4px 0;
 }
 
 /* Search & Replace highlights */

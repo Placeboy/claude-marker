@@ -5,7 +5,7 @@ import { createTurndownService, markdownToHtml } from '../utils/markdown'
 
 const pluginKey = new PluginKey('markdownSourceEdit')
 
-const EXCLUDED_TYPES = new Set(['image', 'bookmark', 'codeBlock'])
+const EXCLUDED_TYPES = new Set(['image', 'bookmark', 'table', 'codeBlock'])
 
 function nodeToMarkdown(node, schema) {
   const serializer = DOMSerializer.fromSchema(schema)

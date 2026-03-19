@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { openExternal } from '../../utils/tauriAdapter'
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, ReactNodeViewRenderer } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import Link from '@tiptap/extension-link'
@@ -11,16 +11,18 @@ import TaskItem from '@tiptap/extension-task-item'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
 import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table'
+import { InlineMath, BlockMath } from '../../extensions/MathExtension.jsx'
 import SlashCommand from '../../extensions/SlashCommand.jsx'
 import ImageExtension from '../../extensions/ImageExtension.jsx'
 import BookmarkExtension from '../../extensions/BookmarkExtension.jsx'
 import SearchReplace from '../../extensions/SearchReplace.jsx'
 import MarkdownSourceEdit from '../../extensions/MarkdownSourceEdit.jsx'
+import CodeBlock from '../CodeBlock/CodeBlock.jsx'
 import { saveImage, getImageUrl } from '../../utils/imageStore.js'
 import LinkPopup from '../LinkPopup/LinkPopup.jsx'
 import PasteBookmarkPopup from '../PasteBookmarkPopup/PasteBookmarkPopup.jsx'
 import ImageLightbox from '../ImageLightbox/ImageLightbox.jsx'
-import TableMenu from '../TableMenu/TableMenu.jsx'
+import TableControls from '../TableControls/TableControls.jsx'
 import styles from './Editor.module.css'
 
 const lowlight = createLowlight(common)
@@ -178,10 +180,14 @@ export default function Editor({ onReady }) {
       TaskItem.configure({
         nested: true,
       }),
-      CodeBlockLowlight.configure({
+      CodeBlockLowlight.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(CodeBlock)
+        },
+      }).configure({
         lowlight,
       }),
-      Table.configure({ resizable: false }),
+      Table.configure({ resizable: true }),
       TableRow,
       TableHeader,
       TableCell,
@@ -191,6 +197,8 @@ export default function Editor({ onReady }) {
         allowBase64: true,
       }),
       BookmarkExtension,
+      InlineMath,
+      BlockMath,
       SearchReplace,
       MarkdownSourceEdit,
     ],
@@ -289,6 +297,11 @@ export default function Editor({ onReady }) {
           e.preventDefault()
           editor.chain().focus().toggleHighlight().run()
         }
+        // Inline math shortcut Cmd+Shift+M
+        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'm') {
+          e.preventDefault()
+          editor.chain().focus().insertContent({ type: 'inlineMath', attrs: { formula: '' } }).run()
+        }
         // Table shortcuts (Alt+Shift+Arrow)
         if (e.altKey && e.shiftKey && editor.isActive('table')) {
           if (e.key === 'ArrowUp') { e.preventDefault(); editor.chain().focus().addRowBefore().run() }
@@ -349,7 +362,7 @@ export default function Editor({ onReady }) {
   return (
     <div className={styles.editor}>
       <EditorContent editor={editor} />
-      <TableMenu editor={editor} />
+      <TableControls editor={editor} />
       <LinkPopup editor={editor} />
       {pastePopup && (
         <PasteBookmarkPopup

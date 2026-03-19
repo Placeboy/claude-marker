@@ -89,6 +89,22 @@ export const slashItems = [
     },
   },
   {
+    title: 'Block Math',
+    description: 'Display formula (LaTeX / KaTeX)',
+    icon: '∑',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent({ type: 'blockMath', attrs: { formula: '' } }).run()
+    },
+  },
+  {
+    title: 'Inline Math',
+    description: 'Inline formula (LaTeX / KaTeX)',
+    icon: '∫',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent({ type: 'inlineMath', attrs: { formula: '' } }).run()
+    },
+  },
+  {
     title: 'Table',
     description: 'Insert a table',
     icon: '⊞',

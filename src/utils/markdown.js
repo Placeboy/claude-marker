@@ -29,6 +29,19 @@ export function createTurndownService() {
     },
   })
 
+  td.addRule('inlineMath', {
+    filter: (node) => node.nodeName === 'SPAN' && node.getAttribute('data-type') === 'inline-math',
+    replacement: (content, node) => `$${node.getAttribute('data-formula') || ''}$`,
+  })
+
+  td.addRule('blockMath', {
+    filter: (node) => node.nodeName === 'DIV' && node.getAttribute('data-type') === 'block-math',
+    replacement: (content, node) => {
+      const formula = node.getAttribute('data-formula') || ''
+      return `\n\n$$\n${formula}\n$$\n\n`
+    },
+  })
+
   td.addRule('tableCell', {
     filter: ['th', 'td'],
     replacement: (content, node) => {
@@ -106,6 +119,22 @@ export function markdownToHtml(md) {
     return placeholder
   })
 
+  // Extract block math $$...$$ before inline processing (prevents * inside formulas becoming <em>)
+  const mathBlocks = []
+  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (_, formula) => {
+    const i = mathBlocks.length
+    mathBlocks.push(`<div data-type="block-math" data-formula="${escapeAttr(formula.trim())}"></div>`)
+    return `\x00MATHBLOCK${i}\x00`
+  })
+
+  // Extract inline math $...$ (single line, not $$)
+  const inlineMaths = []
+  processed = processed.replace(/\$([^$\n]+)\$/g, (_, formula) => {
+    const i = inlineMaths.length
+    inlineMaths.push(`<span data-type="inline-math" data-formula="${escapeAttr(formula.trim())}"></span>`)
+    return `\x00INLINEMATH${i}\x00`
+  })
+
   processed = processed
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -146,7 +175,7 @@ export function markdownToHtml(md) {
     .replace(/^\d+\. (.+)$/gm, '<ol><li><p>$1</p></li></ol>')
 
   processed = processed.replace(
-    /^(?!<[hupob]|<li|<hr|<code|<pre|<img|\x00CODEBLOCK)(.+)$/gm,
+    /^(?!<[hupob]|<li|<hr|<code|<pre|<img|\x00CODEBLOCK|\x00MATHBLOCK)(.+)$/gm,
     '<p>$1</p>'
   )
 
@@ -157,6 +186,16 @@ export function markdownToHtml(md) {
 
   // Strip Markdown backslash escapes (e.g. 1\. → 1.) but not inside code blocks
   processed = processed.replace(/\\([\\`*_{}[\]()#+\-.!>~|])/g, '$1')
+
+  // Restore inline math (inside <p> tags — valid)
+  inlineMaths.forEach((html, i) => {
+    processed = processed.replace(`\x00INLINEMATH${i}\x00`, html)
+  })
+
+  // Restore block math (standalone block — not wrapped in <p>)
+  mathBlocks.forEach((html, i) => {
+    processed = processed.replace(`\x00MATHBLOCK${i}\x00`, html)
+  })
 
   codeBlocks.forEach((block, i) => {
     processed = processed.replace(`\x00CODEBLOCK${i}\x00`, block)
@@ -170,4 +209,12 @@ function escapeHtml(text) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+}
+
+function escapeAttr(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }

@@ -1,0 +1,99 @@
+.handle {
+  position: fixed;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  cursor: pointer;
+  z-index: 100;
+  padding: 0;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.handle:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-text-tertiary);
+}
+
+/* 3×2 dot grid icon */
+.dots {
+  display: grid;
+  grid-template-columns: repeat(2, 3px);
+  grid-template-rows: repeat(3, 3px);
+  gap: 2px;
+}
+
+.dots::before,
+.dots::after {
+  display: none; /* handled via box-shadow trick below */
+}
+
+.dots {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+  box-shadow:
+    5px 0   0 var(--color-text-secondary),
+    0   5px 0 var(--color-text-secondary),
+    5px 5px 0 var(--color-text-secondary),
+    0  10px 0 var(--color-text-secondary),
+    5px 10px 0 var(--color-text-secondary);
+}
+
+/* Rotated 90° for column handle */
+.dotsH {
+  transform: rotate(90deg);
+}
+
+/* Dropdown menu */
+.dropdown {
+  position: fixed;
+  z-index: 200;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+  min-width: 180px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.875em;
+  font-family: var(--font-sans);
+  text-align: left;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+
+.item:hover {
+  background: var(--color-bg-hover);
+}
+
+.danger {
+  color: var(--color-danger);
+}
+
+.danger:hover {
+  background: var(--color-danger-bg);
+}
+
+.sep {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
