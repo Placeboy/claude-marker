@@ -17,12 +17,13 @@
 - **Markdown 源码编辑** — 双击任意块即可内联编辑其原始 Markdown，失焦或按 Escape 应用更改
 - **本地图片支持** — 自动解析并显示 Markdown 文件中的相对路径图片（Tauri 桌面版）
 - **键盘快捷键** — Cmd/Ctrl+B（加粗）、Cmd/Ctrl+I（斜体）、Cmd/Ctrl+U（下划线）、Cmd/Ctrl+Shift+S（删除线）、Cmd/Ctrl+E（行内代码）、Cmd/Ctrl+Shift+H（高亮）、Cmd/Ctrl+K（链接）
-- **表格** — 通过 `/table` 斜杠命令插入表格；Tab/Shift+Tab 在单元格间导航，Alt+Shift+方向键添加行/列，浮动工具栏支持行列插入和删除；支持 GFM 表格导入/导出
-- **斜杠命令** — 输入 `/` 打开命令菜单，可插入标题、列表、引用、代码块、表格、分割线、待办列表
+- **表格** — 通过 `/table` 斜杠命令插入表格；Tab/Shift+Tab 在单元格间导航，Alt+Shift+方向键添加行/列，可拖拽调整列宽，浮动工具栏支持行列插入和删除；支持 GFM 表格导入/导出
+- **数学公式** — 行内公式（`$...$`）和块级公式（`$$...$$`），使用 KaTeX 渲染；可通过斜杠命令或 Cmd/Ctrl+Shift+M 快捷键插入
+- **斜杠命令** — 输入 `/` 打开命令菜单，可插入标题、列表、引用、代码块、表格、数学公式、分割线、待办列表
 - **侧边目录** — 自动从 H1–H3 标题生成目录，点击跳转，当前位置高亮
 - **自动保存** — 内容自动保存到 localStorage
 - **导入 / 导出** — 支持导入和导出 `.md` 文件
-- **语法高亮** — 代码块支持 highlight.js 语法高亮
+- **语法高亮** — 代码块支持语言选择器和 highlight.js 语法高亮
 - **暗色模式** — 工具栏切换亮色 / 暗色 / 跟随系统，偏好持久化保存
 - **简洁界面** — 极简设计，编辑区最大宽度 720px 居中，侧边栏可收起
 
@@ -90,6 +91,7 @@ npm run tauri:build
 | `Cmd/Ctrl + E` | 行内代码 |
 | `Cmd/Ctrl + Shift + H` | 高亮 |
 | `Cmd/Ctrl + K` | 插入链接 |
+| `Cmd/Ctrl + Shift + M` | 插入行内公式 |
 | `Cmd/Ctrl + F` | 查找 |
 | `Cmd/Ctrl + H` | 查找并替换 |
 | `Tab / Shift+Tab` | 列表缩进 / 取消缩进；表格单元格导航 |
@@ -121,11 +123,13 @@ src/
 │   ├── Toolbar/               # 格式化按钮
 │   ├── Sidebar/               # 侧边目录 + 文件树
 │   ├── TabBar/                # 文档标签页
-│   ├── TableMenu/             # 浮动表格操作工具栏
+│   ├── CodeBlock/             # 代码块（含语言选择器）
+│   ├── TableControls/         # 浮动表格操作工具栏
 │   └── SlashMenu/             # 斜杠命令弹出菜单
 ├── extensions/
 │   ├── SlashCommand.jsx       # TipTap 斜杠命令扩展
 │   ├── ImageExtension.jsx     # 图片节点（支持本地路径）
+│   ├── MathExtension.jsx      # 行内和块级数学公式（KaTeX）
 │   ├── SearchReplace.jsx      # 搜索替换与高亮
 │   └── MarkdownSourceEdit.jsx # 双击内联源码编辑
 ├── hooks/
@@ -150,6 +154,7 @@ src-tauri/                     # Tauri v2 桌面外壳 (Rust)
 - **React 18** + **Vite** — 快速开发/构建工具链
 - **TipTap v2** (ProseMirror) — 富文本编辑器引擎
 - **highlight.js** (lowlight) — 代码语法高亮
+- **KaTeX** — 数学公式渲染
 - **CSS Modules** — 组件级样式隔离
 - **Turndown** — HTML 转 Markdown（用于导出）
 - **Tauri v2** — 原生桌面外壳（使用系统 WebView，约 10 MB）

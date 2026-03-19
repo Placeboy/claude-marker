@@ -17,12 +17,13 @@ A lightweight, Notion-style Markdown editor built with React and TipTap. Runs as
 - **Markdown Source Edit** — Double-click any block to edit its raw Markdown inline, then blur or press Escape to apply
 - **Local Image Support** — Relative image paths in markdown files are resolved and displayed automatically (Tauri desktop)
 - **Keyboard Shortcuts** — Cmd/Ctrl+B (bold), Cmd/Ctrl+I (italic), Cmd/Ctrl+U (underline), Cmd/Ctrl+Shift+S (strikethrough), Cmd/Ctrl+E (inline code), Cmd/Ctrl+Shift+H (highlight), Cmd/Ctrl+K (link)
-- **Tables** — Insert tables via `/table` slash command; Tab/Shift+Tab to navigate cells, Alt+Shift+Arrow to add rows/columns, floating toolbar for row/column operations; GFM table import/export
-- **Slash Commands** — Type `/` to open a command menu for inserting headings, lists, quotes, code blocks, tables, dividers, and task lists
+- **Tables** — Insert tables via `/table` slash command; Tab/Shift+Tab to navigate cells, Alt+Shift+Arrow to add rows/columns, draggable column widths, floating toolbar for row/column operations; GFM table import/export
+- **Math** — Inline (`$...$`) and block (`$$...$$`) math formulas rendered with KaTeX; insert via slash commands or Cmd/Ctrl+Shift+M shortcut
+- **Slash Commands** — Type `/` to open a command menu for inserting headings, lists, quotes, code blocks, tables, math formulas, dividers, and task lists
 - **Table of Contents** — Auto-generated sidebar TOC from H1–H3 headings with click-to-scroll and active heading highlight
 - **Auto Save** — Content is automatically saved to localStorage
 - **Import / Export** — Import and export `.md` files
-- **Syntax Highlighting** — Code blocks with highlight.js support
+- **Syntax Highlighting** — Code blocks with language selector and highlight.js support
 - **Dark Mode** — Light / dark / system theme toggle in the toolbar, persisted across sessions
 - **Clean UI** — Minimal design with a centered 720px editor area, collapsible sidebar
 
@@ -90,6 +91,7 @@ npm run tauri:build
 | `Cmd/Ctrl + E` | Inline code |
 | `Cmd/Ctrl + Shift + H` | Highlight |
 | `Cmd/Ctrl + K` | Insert link |
+| `Cmd/Ctrl + Shift + M` | Insert inline math |
 | `Cmd/Ctrl + F` | Find |
 | `Cmd/Ctrl + H` | Find & Replace |
 | `Tab / Shift+Tab` | Indent / outdent list; navigate table cells |
@@ -121,11 +123,13 @@ src/
 │   ├── Toolbar/               # Format buttons
 │   ├── Sidebar/               # Table of contents + file tree
 │   ├── TabBar/                # Document tabs
-│   ├── TableMenu/             # Floating table operations toolbar
+│   ├── CodeBlock/             # Code block with language selector
+│   ├── TableControls/         # Floating table operations toolbar
 │   └── SlashMenu/             # Slash command popup menu
 ├── extensions/
 │   ├── SlashCommand.jsx       # TipTap slash command extension
 │   ├── ImageExtension.jsx     # Image node with local-path support
+│   ├── MathExtension.jsx      # Inline & block math (KaTeX)
 │   ├── SearchReplace.jsx      # Find & replace with highlights
 │   └── MarkdownSourceEdit.jsx # Double-click inline source editing
 ├── hooks/
@@ -150,6 +154,7 @@ src-tauri/                     # Tauri v2 desktop shell (Rust)
 - **React 18** + **Vite** — Fast dev/build toolchain
 - **TipTap v2** (ProseMirror) — Rich text editor engine
 - **highlight.js** via lowlight — Code syntax highlighting
+- **KaTeX** — Math formula rendering
 - **CSS Modules** — Scoped component styling
 - **Turndown** — HTML to Markdown conversion for export
 - **Tauri v2** — Native desktop shell (uses system WebView, ~10 MB)
