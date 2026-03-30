@@ -7,6 +7,7 @@ import SearchBar from './components/SearchBar/SearchBar'
 import useToc from './hooks/useToc'
 import useDocuments from './hooks/useDocuments'
 import useHashRouter from './hooks/useHashRouter'
+import useEdgeScroll from './hooks/useEdgeScroll'
 import { saveTextFile } from './utils/tauriAdapter'
 import { editorToMarkdown } from './utils/markdown'
 import styles from './App.module.css'
@@ -29,6 +30,8 @@ export default function App() {
     saveCurrentDocAs: async () => {},
     exportMarkdown: async () => {},
   })
+  const editorAreaRef = useRef(null)
+  useEdgeScroll(editorAreaRef)
   const { headings, activeId } = useToc(editor)
   const { hashDocId, setHash, replaceHash } = useHashRouter()
   const {
@@ -223,7 +226,7 @@ export default function App() {
         {currentDocDeleted && (
           <div className={styles.deletedBanner}>This file has been deleted from disk.</div>
         )}
-        <div className={styles.editorArea}>
+        <div className={styles.editorArea} ref={editorAreaRef}>
           <SearchBar
             editor={editor}
             visible={searchBarVisible}
