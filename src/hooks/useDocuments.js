@@ -453,11 +453,17 @@ export default function useDocuments(editor, { hashDocId, setHash, replaceHash }
       if (selfWriteRef.current) return
       const ed = editorRef.current
       if (!ed) return
-      if (ed.isFocused) return
       try {
         const text = await readTextFile(doc.path)
         if (cancelled) return
-        ed.commands.setContent(markdownToHtml(text || ''))
+        // Compare raw file content with last known file content to skip no-op reloads
+        const newContent = text || ''
+        if (newContent === lastFileContentRef.current) return
+        selfWriteRef.current = true
+        ed.commands.setContent(markdownToHtml(newContent))
+        await resolveLocalImages(ed, doc.path)
+        lastFileContentRef.current = editorToMarkdown(ed)
+        setTimeout(() => { selfWriteRef.current = false }, 1500)
       } catch {
         // ignore read errors during reload
       }
